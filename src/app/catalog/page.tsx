@@ -340,28 +340,41 @@ export default function CatalogPage() {
               const displayArs =
                 currencyMode === 'mep' ? item.medianArsMep : item.medianArsBlue;
               return (
-                <div
+                <Link
                   key={item.id}
-                  className="bg-white dark:bg-[#0F1E36] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between"
+                  href={`/catalog/sealed/${item.id}`}
+                  className="group bg-white dark:bg-[#0F1E36] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all flex flex-col justify-between"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-blue-600 dark:text-sky-400 uppercase tracking-wider text-[10px]">
                         {item.type.replace('_', ' ')}
                       </span>
-                      <span className="font-mono text-slate-400 text-[11px]">{item.setCode}</span>
+                      <span className="font-mono text-slate-400 text-[11px] bg-slate-100 dark:bg-[#0A1128] px-2 py-0.5 rounded">
+                        {item.setCode}
+                      </span>
                     </div>
 
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    {/* Image Preview */}
+                    <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-slate-50 dark:bg-[#0A1128] p-3 flex items-center justify-center">
+                      <CardImage
+                        src={item.imageUrl}
+                        alt={item.name}
+                        code={item.setCode}
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-sky-400 transition-colors line-clamp-2">
                       {item.name}
                     </h3>
 
-                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                       {item.description}
                     </p>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2 mt-3">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-500">Mediana TCGplayer:</span>
                       <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
@@ -370,9 +383,9 @@ export default function CatalogPage() {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">Conversión {currencyMode.toUpperCase()}:</span>
+                      <span className="text-xs text-slate-500">Ref. {currencyMode.toUpperCase()}:</span>
                       <span
-                        className={`text-lg font-mono font-black ${
+                        className={`text-base font-mono font-black ${
                           currencyMode === 'mep'
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : 'text-sky-600 dark:text-sky-400'
@@ -382,7 +395,7 @@ export default function CatalogPage() {
                       </span>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

@@ -25,10 +25,13 @@ import {
   Layers,
   Receipt,
   MessageSquare,
+  Star,
+  Sparkles,
 } from 'lucide-react';
 import { CollectionItem } from '@/lib/marketplace';
 import { formatArs, formatUsd } from '@/lib/currency';
 import { CardImage } from '@/components/CardImage';
+import { ReviewModal } from '@/components/ReviewModal';
 
 export default function ProfilePage() {
   const { user, loading, refreshUser } = useAuth();
@@ -89,6 +92,7 @@ export default function ProfilePage() {
   });
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [ordersTab, setOrdersTab] = useState<'purchases' | 'sales'>('purchases');
+  const [selectedOrderForReview, setSelectedOrderForReview] = useState<any | null>(null);
 
   const fetchOrders = async () => {
     try {
@@ -494,38 +498,52 @@ export default function ProfilePage() {
             </p>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#0A1128] p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold">
-            <button
-              onClick={() => setCollectionFilter('all')}
-              className={`px-3 py-1 rounded-lg transition-all ${
-                collectionFilter === 'all'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              Todas ({collection.items.length})
-            </button>
-            <button
-              onClick={() => setCollectionFilter('owned')}
-              className={`px-3 py-1 rounded-lg transition-all ${
-                collectionFilter === 'owned'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              En Posesión ({collection.ownedCount})
-            </button>
-            <button
-              onClick={() => setCollectionFilter('wishlist')}
-              className={`px-3 py-1 rounded-lg transition-all ${
-                collectionFilter === 'wishlist'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              Wishlist ({collection.wishlistCount})
-            </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Public Showcase Link */}
+            {user && (
+              <Link
+                href={`/u/${user.alias}`}
+                className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-sky-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-sm shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-sky-400" />
+                Vitrina Pública (/u/{user.alias})
+                <ExternalLink className="w-3 h-3 text-slate-400" />
+              </Link>
+            )}
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#0A1128] p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold">
+              <button
+                onClick={() => setCollectionFilter('all')}
+                className={`px-3 py-1 rounded-lg transition-all ${
+                  collectionFilter === 'all'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Todas ({collection.items.length})
+              </button>
+              <button
+                onClick={() => setCollectionFilter('owned')}
+                className={`px-3 py-1 rounded-lg transition-all ${
+                  collectionFilter === 'owned'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                En Posesión ({collection.ownedCount})
+              </button>
+              <button
+                onClick={() => setCollectionFilter('wishlist')}
+                className={`px-3 py-1 rounded-lg transition-all ${
+                  collectionFilter === 'wishlist'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Wishlist ({collection.wishlistCount})
+              </button>
+            </div>
           </div>
         </div>
 
@@ -748,6 +766,18 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {ordersTab === 'purchases' && isPaid && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOrderForReview(order)}
+                          className="px-3 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                          title="Dejar calificación y feedback al vendedor"
+                        >
+                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          Calificar
+                        </button>
+                      )}
+
                       <Link
                         href={`/messages?with=${otherPartyId}&card=${order.item.cardCode}`}
                         className="p-2.5 bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition"
@@ -770,6 +800,18 @@ export default function ProfilePage() {
           </div>
         )}
       </section>
+
+      {/* Review Modal */}
+      {selectedOrderForReview && (
+        <ReviewModal
+          order={selectedOrderForReview}
+          isOpen={Boolean(selectedOrderForReview)}
+          onClose={() => setSelectedOrderForReview(null)}
+          onSuccess={() => {
+            fetchOrders();
+          }}
+        />
+      )}
     </div>
   );
 }

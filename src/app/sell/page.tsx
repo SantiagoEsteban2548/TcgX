@@ -1,29 +1,37 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   Tag,
   AlertTriangle,
   CheckCircle,
-  HelpCircle,
   Sparkles,
   ArrowRight,
   TrendingDown,
   Layers,
+  Box,
   CreditCard,
 } from 'lucide-react';
-import { CANONICAL_CARDS, CanonicalCard } from '@/data/canonicalCatalog';
+import { CANONICAL_CARDS, CANONICAL_SEALED } from '@/data/canonicalCatalog';
 import { formatArs, formatUsd, calculateMedianDiffPercentage } from '@/lib/currency';
 import { CardImage } from '@/components/CardImage';
 
-export default function SellPage() {
+function SellFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
 
-  const [selectedCardCode, setSelectedCardCode] = useState('OP01-025');
+  const initialType = searchParams.get('type') === 'sealed' ? 'SEALED' : 'CARD';
+  const initialProduct = searchParams.get('product') || CANONICAL_SEALED[0].id;
+  const initialCard = searchParams.get('card') || 'OP01-025';
+
+  const [itemType, setItemType] = useState<'CARD' | 'SEALED'>(initialType);
+  const [selectedCardCode, setSelectedCardCode] = useState(initialCard);
+  const [selectedSealedId, setSelectedSealedId] = useState(initialProduct);
+
   const [condition, setCondition] = useState<'NM' | 'LP' | 'MP' | 'HP' | 'DMG'>('NM');
   const [priceArs, setPriceArs] = useState<number>(32000);
   const [quantity, setQuantity] = useState<number>(1);
@@ -32,13 +40,41 @@ export default function SellPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const mepRate = 1548.7;
+
   const selectedCard =
     CANONICAL_CARDS.find((c) => c.code === selectedCardCode) || CANONICAL_CARDS[0];
+  const selectedSealed =
+    CANONICAL_SEALED.find((s) => s.id === selectedSealedId) || CANONICAL_SEALED[0];
 
-  // Cotización estimada para cálculo
-  const mepRate = 1548.7;
-  const cardMedianArs = selectedCard.currentMedianUsd * mepRate;
-  const diffPct = calculateMedianDiffPercentage(priceArs / mepRate, selectedCard.currentMedianUsd);
+  const currentMedianUsd =
+    itemType === 'CARD' ? selectedCard.currentMedianUsd : selectedSealed.currentMedianUsd;
+  const currentMedianArs = currentMedianUsd * mepRate;
+  const diffPct = calculateMedianDiffPercentage(priceArs / mepRate, currentMedianUsd);
+
+  // Al cambiar de producto o tipo, sugerir precio inicial aproximado redondeado
+  const handleTypeChange = (type: 'CARD' | 'SEALED') => {
+    setItemType(type);
+    const targetMedian =
+      type === 'CARD' ? selectedCard.currentMedianUsd : selectedSealed.currentMedianUsd;
+    setPriceArs(Math.round((targetMedian * mepRate) / 500) * 500);
+  };
+
+  const handleCardChange = (code: string) => {
+    setSelectedCardCode(code);
+    const card = CANONICAL_CARDS.find((c) => c.code === code);
+    if (card) {
+      setPriceArs(Math.round((card.currentMedianUsd * mepRate) / 500) * 500);
+    }
+  };
+
+  const handleSealedChange = (id: string) => {
+    setSelectedSealedId(id);
+    const sealed = CANONICAL_SEALED.find((s) => s.id === id);
+    if (sealed) {
+      setPriceArs(Math.round((sealed.currentMedianUsd * mepRate) / 1000) * 1000);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,16 +82,24 @@ export default function SellPage() {
     setSubmitting(true);
 
     try {
+      const payload: any = {
+        itemType,
+        condition,
+        priceArs,
+        quantity,
+        description,
+      };
+
+      if (itemType === 'SEALED') {
+        payload.sealedProductId = selectedSealedId;
+      } else {
+        payload.cardCode = selectedCardCode;
+      }
+
       const res = await fetch('/api/marketplace/listings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cardCode: selectedCardCode,
-          condition,
-          priceArs,
-          quantity,
-          description,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -68,7 +112,11 @@ export default function SellPage() {
 
       setSuccess(true);
       setTimeout(() => {
-        router.push(`/catalog/${selectedCardCode}`);
+        if (itemType === 'SEALED') {
+          router.push(`/catalog/sealed/${selectedSealedId}`);
+        } else {
+          router.push(`/catalog/${selectedCardCode}`);
+        }
       }, 1500);
     } catch {
       setError('Error al conectar con el servidor.');
@@ -91,7 +139,7 @@ export default function SellPage() {
           <Tag className="w-6 h-6" />
         </div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-          Iniciá sesión para publicar cartas a la venta
+          Iniciá sesión para publicar en el marketplace
         </h2>
         <p className="text-xs text-slate-500">
           Para garantizar la seguridad de compradores y vendedores, se requiere una cuenta verificada.
@@ -111,10 +159,10 @@ export default function SellPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-          Publicar Carta para la Venta
+          Publicar en el Marketplace
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Publicá tu carta fijando tu propio precio en ARS con referencia a la mediana internacional de TCGplayer.
+          Publicá tus cartas o producto sellado fijando tu propio precio en ARS con referencia a la mediana internacional de TCGplayer.
         </p>
       </div>
 
@@ -126,7 +174,7 @@ export default function SellPage() {
             <div className="space-y-0.5 text-xs text-amber-800 dark:text-amber-200">
               <p className="font-bold">Mercado Pago no conectado</p>
               <p className="text-amber-700 dark:text-amber-300">
-                Para que los compradores puedan abonar y el dinero se acredite directamente en tu cuenta, debés vincular Mercado Pago en tu perfil antes de publicar.
+                Para que los compradores puedan abonar y el dinero se acredite directamente en tu cuenta vía split, debés vincular Mercado Pago en tu perfil antes de publicar.
               </p>
             </div>
           </div>
@@ -151,47 +199,92 @@ export default function SellPage() {
       {success && (
         <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
           <CheckCircle className="w-4 h-4 shrink-0" />
-          <span>¡Publicación creada exitosamente! Redirigiendo a la carta...</span>
+          <span>¡Publicación creada exitosamente! Redirigiendo a la publicación...</span>
         </div>
       )}
+
+      {/* Item Type Switcher: Singles vs Producto Sellado */}
+      <div className="flex items-center gap-2 bg-slate-100 dark:bg-[#0F1E36] p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md">
+        <button
+          type="button"
+          onClick={() => handleTypeChange('CARD')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all ${
+            itemType === 'CARD'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Layers className="w-4 h-4" /> Single (Carta Suelta)
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTypeChange('SEALED')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all ${
+            itemType === 'SEALED'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Box className="w-4 h-4" /> Producto Sellado (Cajas/Decks)
+        </button>
+      </div>
 
       {/* Main Form Grid */}
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-8">
         {/* Left Column: Form Fields (7 cols) */}
         <div className="md:col-span-7 bg-white dark:bg-[#0F1E36] border border-slate-200 dark:border-[#1B2A4A] rounded-2xl p-6 shadow-sm space-y-5">
-          {/* Card Selection */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Seleccionar Carta del Catálogo Oficial
-            </label>
-            <select
-              value={selectedCardCode}
-              onChange={(e) => setSelectedCardCode(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#0A1128] border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {CANONICAL_CARDS.map((card) => (
-                <option key={card.id} value={card.code}>
-                  [{card.code}] {card.name} — {card.setName} ({card.rarity})
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Card or Sealed Selection */}
+          {itemType === 'CARD' ? (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                Seleccionar Carta del Catálogo Oficial
+              </label>
+              <select
+                value={selectedCardCode}
+                onChange={(e) => handleCardChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#0A1128] border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {CANONICAL_CARDS.map((card) => (
+                  <option key={card.id} value={card.code}>
+                    [{card.code}] {card.name} — {card.setName} ({card.rarity})
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                Seleccionar Producto Sellado Oficial
+              </label>
+              <select
+                value={selectedSealedId}
+                onChange={(e) => handleSealedChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#0A1128] border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {CANONICAL_SEALED.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    [{s.setCode}] {s.name} ({s.type.replace('_', ' ')})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Condition Selection */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Estado / Condición de la Carta
+                Estado / Condición {itemType === 'SEALED' ? 'del Producto Sellado' : 'de la Carta'}
               </label>
               <span className="text-[10px] text-slate-400">Escala estándar TCG</span>
             </div>
             <div className="grid grid-cols-5 gap-2">
               {[
-                { code: 'NM', label: 'Near Mint', desc: 'Impecable' },
-                { code: 'LP', label: 'Lightly Played', desc: 'Leve desgaste' },
-                { code: 'MP', label: 'Moderate', desc: 'Bordes visibles' },
-                { code: 'HP', label: 'Heavy', desc: 'Jugada/Rayada' },
-                { code: 'DMG', label: 'Damaged', desc: 'Doblada/Rotura' },
+                { code: 'NM', label: 'Near Mint', desc: itemType === 'SEALED' ? 'Sellado impecable' : 'Impecable' },
+                { code: 'LP', label: 'Lightly Played', desc: itemType === 'SEALED' ? 'Detalle en film' : 'Leve desgaste' },
+                { code: 'MP', label: 'Moderate', desc: itemType === 'SEALED' ? 'Caja abollada' : 'Bordes visibles' },
+                { code: 'HP', label: 'Heavy', desc: itemType === 'SEALED' ? 'Caja golpeada' : 'Jugada' },
+                { code: 'DMG', label: 'Damaged', desc: itemType === 'SEALED' ? 'Rotura exterior' : 'Doblada' },
               ].map((c) => (
                 <button
                   key={c.code}
@@ -257,7 +350,11 @@ export default function SellPage() {
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detallá si incluye toploader, estado de centrado, método de envío o entrega en puntos de encuentro..."
+              placeholder={
+                itemType === 'SEALED'
+                  ? 'Detallá si la caja viene con precinto original, procedencia, embalaje con plástico de burbujas, etc.'
+                  : 'Detallá si incluye toploader, estado de centrado, método de envío o entrega en puntos de encuentro...'
+              }
               className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#0A1128] border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -268,7 +365,11 @@ export default function SellPage() {
             disabled={submitting || !user.mpConnected}
             className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Publicando...' : 'Publicar Carta en el Marketplace'}
+            {submitting
+              ? 'Publicando...'
+              : itemType === 'SEALED'
+              ? 'Publicar Producto Sellado en el Marketplace'
+              : 'Publicar Carta en el Marketplace'}
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -280,22 +381,26 @@ export default function SellPage() {
               <Sparkles className="w-4 h-4 text-amber-500" /> Comparativa vs TCGplayer
             </h3>
 
-            {/* Selected Card Mini Preview */}
+            {/* Selected Item Mini Preview */}
             <div className="flex gap-3 items-center p-3 rounded-xl bg-slate-50 dark:bg-[#0A1128]">
-              <div className="w-12 h-16 shrink-0 rounded-lg overflow-hidden">
+              <div className="w-14 h-16 shrink-0 rounded-lg overflow-hidden bg-white dark:bg-[#0F1E36] p-1 flex items-center justify-center">
                 <CardImage
-                  src={selectedCard.imageUrl}
-                  alt={selectedCard.name}
-                  code={selectedCard.code}
-                  className="w-full h-full object-cover"
+                  src={itemType === 'CARD' ? selectedCard.imageUrl : selectedSealed.imageUrl}
+                  alt={itemType === 'CARD' ? selectedCard.name : selectedSealed.name}
+                  code={itemType === 'CARD' ? selectedCard.code : selectedSealed.setCode}
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div className="space-y-0.5 min-w-0">
-                <span className="text-[10px] font-mono text-slate-400">{selectedCard.code}</span>
-                <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
-                  {selectedCard.name}
+                <span className="text-[10px] font-mono text-slate-400">
+                  {itemType === 'CARD' ? selectedCard.code : selectedSealed.setCode}
+                </span>
+                <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate">
+                  {itemType === 'CARD' ? selectedCard.name : selectedSealed.name}
                 </p>
-                <p className="text-[10px] text-slate-500">{selectedCard.setName}</p>
+                <p className="text-[10px] text-slate-500 truncate">
+                  {itemType === 'CARD' ? selectedCard.setName : selectedSealed.type.replace('_', ' ')}
+                </p>
               </div>
             </div>
 
@@ -304,14 +409,14 @@ export default function SellPage() {
               <div className="flex justify-between items-center text-slate-500">
                 <span>Mediana TCGplayer:</span>
                 <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                  {formatUsd(selectedCard.currentMedianUsd)}
+                  {formatUsd(currentMedianUsd)}
                 </span>
               </div>
 
               <div className="flex justify-between items-center text-slate-500">
                 <span>Equivalente ARS (MEP):</span>
                 <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                  {formatArs(cardMedianArs)}
+                  {formatArs(currentMedianArs)}
                 </span>
               </div>
 
@@ -348,5 +453,13 @@ export default function SellPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function SellPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-xs text-slate-500">Cargando formulario de venta...</div>}>
+      <SellFormContent />
+    </Suspense>
   );
 }

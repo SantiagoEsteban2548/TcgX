@@ -6,8 +6,9 @@
  * - Colección personal del usuario (desacoplada del inventario en venta) y valuación en ARS.
  */
 
-import { getCardByCode } from './catalog';
+import { getCardByCode, getSealedProductById } from './catalog';
 import { calculateMedianDiffPercentage, convertUsdToArs } from './currency';
+import { prisma } from './prisma';
 
 export type CardCondition = 'NM' | 'LP' | 'MP' | 'HP' | 'DMG';
 export type ListingStatus = 'ACTIVE' | 'SOLD' | 'PAUSED' | 'CANCELLED';
@@ -26,6 +27,8 @@ export interface MarketplaceListing {
   id: string;
   sellerId: string;
   seller: ListingSeller;
+  itemType?: 'CARD' | 'SEALED';
+  sealedProductId?: string;
   cardCode: string;
   cardName: string;
   cardImageUrl: string;
@@ -143,6 +146,35 @@ let listingsStore: MarketplaceListing[] = [
     createdAt: new Date(Date.now() - 43200000).toISOString(),
     updatedAt: new Date().toISOString(),
   },
+  {
+    id: 'listing-sealed-1',
+    sellerId: 'user-demo-1',
+    seller: {
+      id: 'user-demo-1',
+      alias: 'zoro_master',
+      name: 'Roronoa Zoro',
+      avatarUrl: 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=zoro_master',
+      reputationScore: 4.9,
+      totalSalesCount: 18,
+      mpConnected: true,
+    },
+    itemType: 'SEALED',
+    sealedProductId: 'sealed-op01-box',
+    cardCode: 'sealed-op01-box',
+    cardName: 'Romance Dawn Booster Box (OP-01)',
+    cardImageUrl: 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/one-piece/OP01/OP01_EN.webp',
+    condition: 'NM',
+    priceArs: 560000,
+    quantity: 2,
+    description: 'Caja sellada original de fábrica en inglés con film intacto. Traída directo de distribución oficial.',
+    photos: ['https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/one-piece/OP01/OP01_EN.webp'],
+    status: 'ACTIVE',
+    medianPriceUsd: 380.0,
+    medianDiffPercentage: -4.8,
+    isBelowMedian: true,
+    createdAt: new Date(Date.now() - 36000000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 let collectionsStore: CollectionItem[] = [
@@ -188,7 +220,9 @@ let collectionsStore: CollectionItem[] = [
 
 export interface CreateListingParams {
   seller: ListingSeller;
-  cardCode: string;
+  cardCode?: string;
+  sealedProductId?: string;
+  itemType?: 'CARD' | 'SEALED';
   condition: CardCondition;
   priceArs: number;
   quantity: number;
@@ -198,11 +232,26 @@ export interface CreateListingParams {
 }
 
 export function createListing(params: CreateListingParams): MarketplaceListing {
-  const { seller, cardCode, condition, priceArs, quantity, description, photos, mepRate = 1548.7 } = params;
+  const {
+    seller,
+    cardCode,
+    sealedProductId,
+    itemType = 'CARD',
+    condition,
+    priceArs,
+    quantity,
+    description,
+    photos,
+    mepRate = 1548.7,
+  } = params;
 
   // Validación Crítica: Mercado Pago vinculado
   if (!seller.mpConnected) {
-    throw new Error('Debés vincular tu cuenta de Mercado Pago antes de publicar cartas a la venta.');
+    throw new Error(
+      itemType === 'SEALED'
+        ? 'Debés vincular tu cuenta de Mercado Pago antes de publicar a la venta.'
+        : 'Debés vincular tu cuenta de Mercado Pago antes de publicar cartas a la venta.'
+    );
   }
 
   if (priceArs <= 0 || isNaN(priceArs)) {
@@ -213,29 +262,58 @@ export function createListing(params: CreateListingParams): MarketplaceListing {
     throw new Error('La cantidad debe ser al menos 1 unidad entera.');
   }
 
-  const card = getCardByCode(cardCode);
-  if (!card) {
-    throw new Error(`Carta con código ${cardCode} no encontrada en el catálogo.`);
+  let code = cardCode || '';
+  let name = '';
+  let imageUrl = '';
+  let medianUsd = 0;
+
+  if (itemType === 'SEALED') {
+    const targetSealedId = sealedProductId || cardCode;
+    if (!targetSealedId) {
+      throw new Error('Debés especificar el ID del producto sellado a publicar.');
+    }
+    const sealedItem = getSealedProductById(targetSealedId);
+    if (!sealedItem) {
+      throw new Error(`Producto sellado con ID ${targetSealedId} no encontrado en el catálogo.`);
+    }
+    code = sealedItem.id;
+    name = sealedItem.name;
+    imageUrl = sealedItem.imageUrl;
+    medianUsd = sealedItem.currentMedianUsd;
+  } else {
+    if (!cardCode) {
+      throw new Error('Debés especificar el código de la carta a publicar.');
+    }
+    const card = getCardByCode(cardCode);
+    if (!card) {
+      throw new Error(`Carta con código ${cardCode} no encontrada en el catálogo.`);
+    }
+    code = card.code;
+    name = card.name;
+    imageUrl = card.imageUrl;
+    medianUsd = card.currentMedianUsd;
   }
 
   // Convertir precio del vendedor a USD aproximado para calcular diff vs mediana
   const listingPriceUsd = priceArs / mepRate;
-  const diffPct = calculateMedianDiffPercentage(listingPriceUsd, card.currentMedianUsd);
+  const diffPct = calculateMedianDiffPercentage(listingPriceUsd, medianUsd);
 
   const newListing: MarketplaceListing = {
     id: `listing-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     sellerId: seller.id,
     seller,
-    cardCode: card.code,
-    cardName: card.name,
-    cardImageUrl: card.imageUrl,
+    itemType,
+    sealedProductId: itemType === 'SEALED' ? code : undefined,
+    cardCode: code,
+    cardName: name,
+    cardImageUrl: imageUrl,
     condition,
     priceArs: Math.round(priceArs),
     quantity,
     description: description || 'Sin descripción adicional.',
-    photos: photos && photos.length > 0 ? photos : [card.imageUrl],
+    photos: photos && photos.length > 0 ? photos : [imageUrl],
     status: 'ACTIVE',
-    medianPriceUsd: card.currentMedianUsd,
+    medianPriceUsd: medianUsd,
     medianDiffPercentage: diffPct,
     isBelowMedian: diffPct < 0,
     createdAt: new Date().toISOString(),
@@ -248,6 +326,8 @@ export function createListing(params: CreateListingParams): MarketplaceListing {
 
 export interface ListingFilters {
   cardCode?: string;
+  sealedProductId?: string;
+  itemType?: 'CARD' | 'SEALED';
   sellerId?: string;
   condition?: CardCondition;
   status?: ListingStatus;
@@ -265,8 +345,24 @@ export function getListings(filters: ListingFilters = {}): MarketplaceListing[] 
     result = result.filter((l) => l.status === 'ACTIVE');
   }
 
+  if (filters.itemType) {
+    result = result.filter((l) => (l.itemType || 'CARD') === filters.itemType);
+  }
+
+  if (filters.sealedProductId) {
+    result = result.filter(
+      (l) =>
+        l.sealedProductId === filters.sealedProductId ||
+        l.cardCode.toLowerCase() === filters.sealedProductId?.toLowerCase()
+    );
+  }
+
   if (filters.cardCode) {
-    result = result.filter((l) => l.cardCode.toUpperCase() === filters.cardCode?.toUpperCase());
+    result = result.filter(
+      (l) =>
+        l.cardCode.toUpperCase() === filters.cardCode?.toUpperCase() ||
+        (l.sealedProductId && l.sealedProductId.toLowerCase() === filters.cardCode?.toLowerCase())
+    );
   }
 
   if (filters.sellerId) {
@@ -434,6 +530,215 @@ export function removeFromCollection(userId: string, itemId: string): boolean {
   return true;
 }
 
+export interface PublicUserShowcase {
+  user: {
+    id: string;
+    alias: string;
+    name: string | null;
+    avatarUrl: string | null;
+    bio: string | null;
+    reputationScore: number;
+    totalSalesCount: number;
+    createdAt: string;
+  };
+  isPublic: boolean;
+  ownedItems: CollectionItem[];
+  wishlistItems: CollectionItem[];
+  stats: {
+    ownedCardsCount: number;
+    wishlistCardsCount: number;
+    totalEstimatedArsMep: number;
+    totalEstimatedArsBlue: number;
+    topValueCard: CollectionItem | null;
+  };
+}
+
+export async function getUserPublicShowcase(
+  aliasOrId: string,
+  mepRate = 1548.7,
+  blueRate = 1560.0
+): Promise<PublicUserShowcase | null> {
+  const clean = aliasOrId.trim().toLowerCase();
+
+  // 1. Usuarios demo conocidos en memoria (respuesta instantánea)
+  const demoUsers: Record<string, any> = {
+    pirate_king: {
+      id: 'user-default-collection',
+      alias: 'pirate_king',
+      name: 'Juan Pirata (Coleccionista OP)',
+      avatarUrl: 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=pirate_king',
+      bio: 'Coleccionista de Manga Arts y cartas de torneo de One Piece TCG en Argentina.',
+      reputationScore: 4.9,
+      totalSalesCount: 156,
+      createdAt: '2026-01-15T00:00:00.000Z',
+    },
+    juan_pirata: {
+      id: 'user-default-collection',
+      alias: 'pirate_king',
+      name: 'Juan Pirata (Coleccionista OP)',
+      avatarUrl: 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=pirate_king',
+      bio: 'Coleccionista de Manga Arts y cartas de torneo de One Piece TCG en Argentina.',
+      reputationScore: 4.9,
+      totalSalesCount: 156,
+      createdAt: '2026-01-15T00:00:00.000Z',
+    },
+    'user-default-collection': {
+      id: 'user-default-collection',
+      alias: 'pirate_king',
+      name: 'Juan Pirata (Coleccionista OP)',
+      avatarUrl: 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=pirate_king',
+      bio: 'Coleccionista de Manga Arts y cartas de torneo de One Piece TCG en Argentina.',
+      reputationScore: 4.9,
+      totalSalesCount: 156,
+      createdAt: '2026-01-15T00:00:00.000Z',
+    },
+    zoro_master: {
+      id: 'user-demo-1',
+      alias: 'zoro_master',
+      name: 'Roronoa Zoro',
+      avatarUrl: 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=zoro_master',
+      bio: 'Jugador competitivo y coleccionista de líderes rojos y cartas de espadachines.',
+      reputationScore: 4.9,
+      totalSalesCount: 18,
+      createdAt: '2026-03-01T00:00:00.000Z',
+    },
+    strawhat_shop: {
+      id: 'user-demo-2',
+      alias: 'strawhat_shop',
+      name: 'Luffy Collectibles',
+      avatarUrl: 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=strawhat_shop',
+      bio: 'Tienda de singles y cartas foil de sets principales OP01 a OP10.',
+      reputationScore: 5.0,
+      totalSalesCount: 42,
+      createdAt: '2026-02-10T00:00:00.000Z',
+    },
+  };
+
+  let user: any = demoUsers[clean] || null;
+
+  // 2. Si no es un usuario demo y no estamos en entorno de testing sin DB, consultar Prisma
+  if (!user && !process.env.VITEST) {
+    try {
+      const dbUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { alias: { equals: clean, mode: 'insensitive' } },
+            { id: clean },
+          ],
+        },
+      });
+
+      if (dbUser) {
+        user = {
+          id: dbUser.id,
+          alias: dbUser.alias,
+          name: dbUser.name || dbUser.alias,
+          avatarUrl: dbUser.avatarUrl || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${dbUser.alias}`,
+          bio: dbUser.bio || 'Coleccionista en tcgtX One Piece TCG.',
+          reputationScore: dbUser.reputationScore,
+          totalSalesCount: dbUser.totalSalesCount,
+          createdAt: dbUser.createdAt.toISOString(),
+        };
+      }
+    } catch {
+      // DB offline
+    }
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  // Obtener items de colección
+  let items = getUserCollection(user.id, mepRate, blueRate).items;
+
+  // Si no hay items para este demo user, añadimos cartas temáticas
+  if (items.length === 0) {
+    if (user.alias === 'zoro_master') {
+      addToUserCollection({
+        userId: user.id,
+        cardCode: 'OP01-001',
+        condition: 'NM',
+        quantity: 1,
+        isWishlist: false,
+        notes: 'Mi líder favorito de torneos',
+        mepRate,
+        blueRate,
+      });
+      addToUserCollection({
+        userId: user.id,
+        cardCode: 'OP01-025',
+        condition: 'NM',
+        quantity: 2,
+        isWishlist: false,
+        notes: 'Playset de Zoro Rush',
+        mepRate,
+        blueRate,
+      });
+      addToUserCollection({
+        userId: user.id,
+        cardCode: 'OP02-013',
+        condition: 'NM',
+        quantity: 1,
+        isWishlist: true,
+        notes: 'Buscando Ace Manga',
+        mepRate,
+        blueRate,
+      });
+      items = getUserCollection(user.id, mepRate, blueRate).items;
+    } else if (user.alias === 'strawhat_shop') {
+      addToUserCollection({
+        userId: user.id,
+        cardCode: 'OP01-016',
+        condition: 'NM',
+        quantity: 4,
+        isWishlist: false,
+        notes: 'Playset de Nami buscadoras',
+        mepRate,
+        blueRate,
+      });
+      addToUserCollection({
+        userId: user.id,
+        cardCode: 'OP01-047',
+        condition: 'LP',
+        quantity: 1,
+        isWishlist: false,
+        notes: 'Law Leader clásico',
+        mepRate,
+        blueRate,
+      });
+      items = getUserCollection(user.id, mepRate, blueRate).items;
+    }
+  }
+
+  const ownedItems = items.filter((i) => !i.isWishlist);
+  const wishlistItems = items.filter((i) => i.isWishlist);
+
+  const ownedCardsCount = ownedItems.reduce((acc, curr) => acc + curr.quantity, 0);
+  const wishlistCardsCount = wishlistItems.reduce((acc, curr) => acc + curr.quantity, 0);
+  const totalEstimatedArsMep = ownedItems.reduce((acc, curr) => acc + curr.estimatedValueArsMep, 0);
+  const totalEstimatedArsBlue = ownedItems.reduce((acc, curr) => acc + curr.estimatedValueArsBlue, 0);
+
+  // Carta de mayor valor en la colección
+  const topValueCard = [...ownedItems].sort(
+    (a, b) => b.estimatedValueArsMep - a.estimatedValueArsMep
+  )[0] || null;
+
+  return {
+    user,
+    isPublic: true,
+    ownedItems,
+    wishlistItems,
+    stats: {
+      ownedCardsCount,
+      wishlistCardsCount,
+      totalEstimatedArsMep,
+      totalEstimatedArsBlue,
+      topValueCard,
+    },
+  };
+}
+
 export function updateListingStock(id: string, quantitySold: number): MarketplaceListing | null {
   const listing = listingsStore.find((l) => l.id === id);
   if (!listing) return null;
@@ -501,6 +806,35 @@ export function _resetMarketplaceStore() {
       medianDiffPercentage: -20.6,
       isBelowMedian: true,
       createdAt: new Date(Date.now() - 172800000).toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'listing-sealed-1',
+      sellerId: 'seller-demo-1',
+      seller: {
+        id: 'seller-demo-1',
+        alias: 'pirate_king_cards',
+        name: 'Juan Pirata (Vendedor OP)',
+        avatarUrl: 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=pirate_king',
+        reputationScore: 4.9,
+        totalSalesCount: 156,
+        mpConnected: true,
+      },
+      itemType: 'SEALED',
+      sealedProductId: 'sealed-op01-box',
+      cardCode: 'sealed-op01-box',
+      cardName: 'Romance Dawn Booster Box (OP-01)',
+      cardImageUrl: 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/one-piece/OP01/OP01_EN.webp',
+      condition: 'NM',
+      priceArs: 560000,
+      quantity: 2,
+      description: 'Caja sellada original de fábrica en inglés con film intacto. Traída directo de distribución oficial.',
+      photos: ['https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/one-piece/OP01/OP01_EN.webp'],
+      status: 'ACTIVE',
+      medianPriceUsd: 380.0,
+      medianDiffPercentage: -4.8,
+      isBelowMedian: true,
+      createdAt: new Date(Date.now() - 36000000).toISOString(),
       updatedAt: new Date().toISOString(),
     },
   ];

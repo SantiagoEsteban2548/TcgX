@@ -49,3 +49,48 @@ Cuando se asigne una tarea a Jules, el ticket debe redactarse con esta estructur
 - **Qué NO hacer**:
   - [Restricciones explícitas, e.g. no modificar schema de precios, no tocar auth, etc.]
 ```
+
+## 5. Protocolo de Trabajo Asincrónico: Antigravity + Jules
+
+1. **Flujo de Asignación**:
+   - Antigravity define y actualiza los tickets en la sección **6. Cola de Tareas para Jules** de este archivo (`AGENTS.md`).
+   - Cada ticket tiene estado: `[PENDIENTE]` | `[EN PROGRESO]` | `[LISTO PARA REVISIÓN]` | `[COMPLETADO]`.
+2. **Desarrollo por Jules**:
+   - Jules toma un ticket en estado `[PENDIENTE]`.
+   - Crea un branch `feature/jules-[nombre-corto]`.
+   - Implementa código y tests automáticos en `tests/`.
+   - Abre un Pull Request describiendo los criterios cumplidos.
+3. **Revisión e Integración por Antigravity**:
+   - Antigravity verifica el PR ejecutando los tests (`npm run test`) y el build (`npm run build`).
+   - Revisa alineación arquitectónica y diseño visual antes de mergear a `main`.
+
+---
+
+## 6. Cola de Tareas para Jules (Tickets Listos)
+
+### TICKET JULES #1: Exportador e Importador de Colección en CSV / JSON
+- **Estado**: `[PENDIENTE]`
+- **Objetivo**: Implementar un servicio para exportar la colección personal y wishlist de un usuario a formato CSV y JSON, y permitir importar un CSV con columnas `code,quantity,condition,isWishlist`.
+- **Criterios de Aceptación**:
+  - [ ] Función `exportCollectionToCsv(items: CollectionItem[]): string` que genere formato compatible con hojas de cálculo.
+  - [ ] Función `parseCollectionCsv(csvContent: string): Array<{ cardCode: string, quantity: number, condition: CardCondition, isWishlist: boolean }>` que valide códigos existentes contra el catálogo.
+  - [ ] Tests en `tests/collection_io.test.ts` con cobertura de casos válidos y filas malformadas.
+- **Contexto del Repo**:
+  - Archivo a crear: `src/lib/collectionIo.ts`
+  - Tests a crear: `tests/collection_io.test.ts`
+  - Referencias: `src/lib/marketplace.ts` (`CollectionItem`, `getUserCollection`).
+- **Qué NO hacer**:
+  - No modificar la UI ni rutas existentes de `/profile`.
+  - No tocar la lógica de cotizaciones de divisas.
+
+### TICKET JULES #2: Filtro de Búsqueda Avanzada por Atributos de Juego (Power, Cost, Counter)
+- **Estado**: `[PENDIENTE]`
+- **Objetivo**: Extender `CardFilters` en `src/lib/catalog.ts` para permitir rangos numéricos de filtro: costo mínimo/máximo, poder mínimo/máximo y valor de contraataque (Counter 1000/2000).
+- **Criterios de Aceptación**:
+  - [ ] Soporte para `minCost`, `maxCost`, `minPower`, `maxPower`, `counter` en `CardFilters` y `getCards()`.
+  - [ ] Tests unitarios en `tests/catalog.test.ts` verificando filtros combinados (ej: cartas rojas con costo <= 3 y power >= 5000).
+- **Contexto del Repo**:
+  - Archivos a modificar: `src/lib/catalog.ts`, `tests/catalog.test.ts`.
+- **Qué NO hacer**:
+  - No romper los filtros existentes (`query`, `setCode`, `rarity`, `color`, `type`).
+

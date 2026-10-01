@@ -187,6 +187,20 @@ export function getSealedProducts(
 }
 
 /**
+ * Obtiene el detalle de un producto sellado específico por su ID
+ */
+export function getSealedProductById(
+  id: string,
+  mepRate = 1548.7,
+  blueRate = 1560.0
+): EnrichedSealedProduct | null {
+  const clean = id.trim().toLowerCase();
+  const product = sealedStore.find((p) => p.id.toLowerCase() === clean);
+  if (!product) return null;
+  return enrichSealed(product, mepRate, blueRate);
+}
+
+/**
  * Sincroniza o actualiza el precio de una carta en TCGplayer
  * Agrega el registro en priceHistory y actualiza fecha de modificación
  */

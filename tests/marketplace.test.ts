@@ -6,6 +6,7 @@ import {
   addToUserCollection,
   getUserCollection,
   removeFromCollection,
+  getUserPublicShowcase,
   ListingSeller,
 } from '@/lib/marketplace';
 
@@ -149,6 +150,73 @@ describe('Marketplace & Collection Service', () => {
 
       const removed = removeFromCollection(testUserId, item.id);
       expect(removed).toBe(true);
+    });
+  });
+
+  describe('Sealed Product Marketplace Support', () => {
+    it('debe permitir crear publicaciones de Producto Sellado (Booster Box / Decks)', () => {
+      const sealedListing = createListing({
+        seller: verifiedSeller,
+        itemType: 'SEALED',
+        sealedProductId: 'sealed-op05-box',
+        condition: 'NM',
+        priceArs: 310000,
+        quantity: 2,
+        description: 'Caja sellada Awakening of the New Era con precinto original',
+      });
+
+      expect(sealedListing).toBeDefined();
+      expect(sealedListing.itemType).toBe('SEALED');
+      expect(sealedListing.sealedProductId).toBe('sealed-op05-box');
+      expect(sealedListing.cardName).toContain('Awakening of the New Era');
+      expect(sealedListing.priceArs).toBe(310000);
+      expect(sealedListing.status).toBe('ACTIVE');
+      expect(typeof sealedListing.medianDiffPercentage).toBe('number');
+    });
+
+    it('debe filtrar publicaciones por itemType SEALED y por sealedProductId', () => {
+      const sealedListings = getListings({
+        itemType: 'SEALED',
+        sealedProductId: 'sealed-op01-box',
+      });
+
+      expect(sealedListings.length).toBeGreaterThan(0);
+      sealedListings.forEach((l) => {
+        expect(l.itemType).toBe('SEALED');
+        expect(l.sealedProductId).toBe('sealed-op01-box');
+      });
+    });
+
+    it('debe rechazar la publicación de producto sellado inexistente', () => {
+      expect(() =>
+        createListing({
+          seller: verifiedSeller,
+          itemType: 'SEALED',
+          sealedProductId: 'non-existent-box-999',
+          condition: 'NM',
+          priceArs: 100000,
+          quantity: 1,
+        })
+      ).toThrow('Producto sellado con ID non-existent-box-999 no encontrado en el catálogo.');
+    });
+  });
+
+  describe('User Public Showcase (/u/[alias])', () => {
+    it('debe obtener la vitrina pública del usuario con cartas, wishlist y valuación estimada', async () => {
+      const showcase = await getUserPublicShowcase('zoro_master', 1500, 1550);
+
+      expect(showcase).not.toBeNull();
+      expect(showcase?.user.alias).toBe('zoro_master');
+      expect(showcase?.isPublic).toBe(true);
+      expect(showcase?.stats.ownedCardsCount).toBeGreaterThanOrEqual(1);
+      expect(showcase?.stats.totalEstimatedArsMep).toBeGreaterThan(0);
+      expect(showcase?.stats.totalEstimatedArsBlue).toBeGreaterThan(0);
+      expect(showcase?.ownedItems.length).toBeGreaterThan(0);
+    });
+
+    it('debe retornar null cuando el alias de usuario no existe', async () => {
+      const notFound = await getUserPublicShowcase('usuario_inexistente_xyz_123');
+      expect(notFound).toBeNull();
     });
   });
 });

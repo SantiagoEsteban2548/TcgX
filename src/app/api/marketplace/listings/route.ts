@@ -8,6 +8,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
 
     const cardCode = searchParams.get('cardCode') || undefined;
+    const sealedProductId = searchParams.get('sealedProductId') || undefined;
+    const itemType = (searchParams.get('itemType') as 'CARD' | 'SEALED') || undefined;
     const sellerId = searchParams.get('sellerId') || undefined;
     const condition = (searchParams.get('condition') as CardCondition) || undefined;
     const status = (searchParams.get('status') as ListingStatus) || undefined;
@@ -16,6 +18,8 @@ export async function GET(req: NextRequest) {
 
     const listings = getListings({
       cardCode,
+      sealedProductId,
+      itemType,
       sellerId,
       condition,
       status,
@@ -38,19 +42,37 @@ export async function POST(req: NextRequest) {
     const auth = await getAuthUser();
     if (!auth) {
       return NextResponse.json(
-        { error: 'Debés iniciar sesión para publicar una carta a la venta.' },
+        { error: 'Debés iniciar sesión para publicar en el marketplace.' },
         { status: 401 }
       );
     }
 
     const body = await req.json();
-    const { cardCode, condition, priceArs, quantity, description, photos } = body;
+    const {
+      cardCode,
+      sealedProductId,
+      itemType = 'CARD',
+      condition,
+      priceArs,
+      quantity,
+      description,
+      photos,
+    } = body;
 
-    if (!cardCode || !condition || !priceArs) {
-      return NextResponse.json(
-        { error: 'Faltan campos obligatorios (código de carta, condición y precio en ARS).' },
-        { status: 400 }
-      );
+    if (itemType === 'SEALED') {
+      if ((!sealedProductId && !cardCode) || !condition || !priceArs) {
+        return NextResponse.json(
+          { error: 'Faltan campos obligatorios para producto sellado (ID de producto, condición y precio en ARS).' },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (!cardCode || !condition || !priceArs) {
+        return NextResponse.json(
+          { error: 'Faltan campos obligatorios (código de carta, condición y precio en ARS).' },
+          { status: 400 }
+        );
+      }
     }
 
     // Consultar estado de Mercado Pago del usuario
@@ -106,7 +128,9 @@ export async function POST(req: NextRequest) {
         totalSalesCount,
         mpConnected: true,
       },
-      cardCode,
+      itemType,
+      cardCode: itemType === 'SEALED' ? undefined : cardCode,
+      sealedProductId: itemType === 'SEALED' ? (sealedProductId || cardCode) : undefined,
       condition,
       priceArs: Number(priceArs),
       quantity: quantity ? Number(quantity) : 1,
