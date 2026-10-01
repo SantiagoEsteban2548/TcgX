@@ -23,9 +23,17 @@ Integra precios de referencia oficiales de **TCGplayer** (mediana obligatoria de
    - El proceso de KYC (verificación de identidad, CUIT y cuenta bancaria) queda delegado y garantizado por Mercado Pago.
 5. **Cuentas y Colección Personal**:
    - Perfil de usuario con reputación e historial.
-   - Registro de colección personal (wishlist / posesión) completamente desacoplado del inventario publicado para la venta.
-6. **Diseño Profesional**:
-   - Soporte nativo para **Light Mode** y **Dark Mode**.
+   - Registro de colección personal (wishlist / posesión) completamente desacoplado del inventario publicado para la venta, con valuación de portafolio en ARS MEP y Blue.
+6. **Mensajería Interna (Chat Comprador/Vendedor)**:
+   - Hilos de chat directo entre usuarios para coordinar envíos, entregas y fotos adicionales.
+   - Vinculación contextual a cartas del catálogo y órdenes de compra.
+   - Contadores de mensajes no leídos en tiempo real y badges de lectura.
+7. **Checkout con Mercado Pago Split & Freeze Cambiario**:
+   - Modal de compra con desglose en ARS y cálculo transparente de split fee (5% plataforma).
+   - Cotización MEP/Blue congelada en la orden para resguardo ante fluctuaciones cambiarias.
+   - Webhook con confirmación de pago y actualización automática de stock en el marketplace.
+8. **Diseño Profesional**:
+   - Soporte nativo para **Light Mode** y **Dark Mode** con alternador en la barra de navegación.
    - Paleta náutica corporativa (azules marinos, celestes, blancos limpios y acentos financieros). Ver detalles en [`design.md`](./design.md).
 
 ---
@@ -34,9 +42,10 @@ Integra precios de referencia oficiales de **TCGplayer** (mediana obligatoria de
 
 - **Frontend & Backend**: Next.js 15+ (App Router, React 19, TypeScript).
 - **Estilos**: Tailwind CSS v4.
-- **Base de Datos & ORM**: PostgreSQL con Prisma ORM.
-- **Testing**: Vitest para tests unitarios y de integración de lógica crítica (precios, divisas, pagos).
-- **Control de Calidad**: ESLint y TypeScript en modo estricto.
+- **Base de Datos & ORM**: PostgreSQL con Prisma ORM (`prisma/schema.prisma`).
+- **Testing**: Vitest (`npm run test`) con 52 tests automáticos de pricing, checkout y flujo E2E.
+- **Cotizaciones**: DolarApi en vivo (`https://dolarapi.com/v1/dolares`).
+- **Pagos**: SDK oficial de Mercado Pago en modo Sandbox.
 
 ---
 
