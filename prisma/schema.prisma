@@ -1,0 +1,304 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  SELLER
+  ADMIN
+}
+
+enum CardCondition {
+  NM  // Near Mint
+  LP  // Lightly Played
+  MP  // Moderately Played
+  HP  // Heavily Played
+  DMG // Damaged
+}
+
+enum SealedProductType {
+  BOOSTER_BOX
+  BOOSTER_PACK
+  STARTER_DECK
+  DOUBLE_PACK
+  PREMIUM_COLLECTION
+  SLEEVES
+  OTHER
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  PAUSED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+// ----------------------------------------------------
+// USUARIOS Y PERFILES
+// ----------------------------------------------------
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String?
+  alias           String           @unique
+  avatarUrl       String?
+  role            Role             @default(USER)
+  bio             String?
+  phone           String?
+  
+  // Integración Mercado Pago (OAuth)
+  mpUserId        String?          @unique
+  mpAccessToken   String?          // Almacenado de forma segura
+  mpRefreshToken  String?
+  mpConnectedAt   DateTime?
+
+  // Reputación
+  reputationScore Float            @default(5.0)
+  totalSalesCount Int              @default(0)
+  totalBuysCount  Int              @default(0)
+
+  // Relaciones
+  listings        Listing[]
+  collections     UserCollection[]
+  ordersBought    Order[]          @relation("BuyerOrders")
+  ordersSold      Order[]          @relation("SellerOrders")
+  sentMessages    Message[]        @relation("SentMessages")
+  receivedMessages Message[]       @relation("ReceivedMessages")
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+// ----------------------------------------------------
+// CATÁLOGO CANÓNICO: SINGLES
+// ----------------------------------------------------
+model Card {
+  id                 String           @id @default(cuid())
+  code               String           @unique // e.g. "OP01-025"
+  name               String
+  setName            String           // e.g. "Romance Dawn"
+  setCode            String           // e.g. "OP-01"
+  rarity             String           // e.g. "SEC", "SR", "R", "UC", "C", "L"
+  color              String?          // e.g. "Red", "Green", "Blue", etc.
+  type               String?          // e.g. "Leader", "Character", "Event", "Stage"
+  cost               Int?
+  power              Int?
+  counter            Int?
+  attribute          String?          // e.g. "Slash", "Strike", "Special"
+  effectText         String?
+  imageUrl           String
+  
+  // TCGplayer reference
+  tcgplayerProductId Int?             @unique
+  
+  // Precios actuales en USD
+  currentMedianUsd   Float?
+  currentMarketUsd   Float?
+  priceLastUpdated   DateTime?
+
+  // Relaciones
+  priceHistory       PriceHistory[]
+  listings           Listing[]
+  userCollections    UserCollection[]
+
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([code])
+  @@index([name])
+  @@index([setCode])
+}
+
+// ----------------------------------------------------
+// CATÁLOGO CANÓNICO: PRODUCTO SELLADO
+// ----------------------------------------------------
+model SealedProduct {
+  id                 String             @id @default(cuid())
+  name               String             // e.g. "Romance Dawn Booster Box"
+  type               SealedProductType
+  setCode            String?            // e.g. "OP-01"
+  description        String?
+  imageUrl           String
+  
+  // TCGplayer reference
+  tcgplayerProductId Int?               @unique
+
+  // Precios actuales en USD
+  currentMedianUsd   Float?
+  currentMarketUsd   Float?
+  priceLastUpdated   DateTime?
+
+  // Relaciones
+  priceHistory       PriceHistory[]
+  listings           Listing[]
+
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([type])
+  @@index([setCode])
+}
+
+// ----------------------------------------------------
+// HISTORIAL DE PRECIOS TCGPLAYER
+// ----------------------------------------------------
+model PriceHistory {
+  id              String         @id @default(cuid())
+  cardId          String?
+  card            Card?          @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  
+  sealedProductId String?
+  sealedProduct   SealedProduct? @relation(fields: [sealedProductId], references: [id], onDelete: Cascade)
+
+  medianPriceUsd  Float
+  marketPriceUsd  Float
+  recordedAt      DateTime       @default(now())
+
+  @@index([cardId, recordedAt])
+  @@index([sealedProductId, recordedAt])
+}
+
+// ----------------------------------------------------
+// MARKETPLACE: PUBLICACIONES DE VENDEDORES (LISTINGS)
+// ----------------------------------------------------
+model Listing {
+  id              String         @id @default(cuid())
+  sellerId        String
+  seller          User           @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  
+  // Referencia a Single o Sellado
+  cardId          String?
+  card            Card?          @relation(fields: [cardId], references: [id])
+  
+  sealedProductId String?
+  sealedProduct   SealedProduct? @relation(fields: [sealedProductId], references: [id])
+
+  condition       CardCondition  @default(NM)
+  priceArs        Float          // Precio en Pesos fijado por el vendedor
+  quantity        Int            @default(1)
+  description     String?
+  photos          String[]       // URLs de fotos reales provistas por el vendedor
+  status          ListingStatus  @default(ACTIVE)
+
+  orderItems      OrderItem[]
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([sellerId])
+  @@index([cardId])
+  @@index([sealedProductId])
+  @@index([status])
+}
+
+// ----------------------------------------------------
+// COLECCIÓN PERSONAL (DESACOPLADA DEL MARKETPLACE)
+// ----------------------------------------------------
+model UserCollection {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  cardId          String
+  card            Card          @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  quantity        Int           @default(1)
+  condition       CardCondition @default(NM)
+  isWishlist      Boolean       @default(false)
+  isPublic        Boolean       @default(false)
+  notes           String?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([userId, cardId, condition, isWishlist])
+  @@index([userId])
+}
+
+// ----------------------------------------------------
+// ÓRDENES Y TRANSACCIONES (MERCADO PAGO SPLIT)
+// ----------------------------------------------------
+model Order {
+  id                 String       @id @default(cuid())
+  buyerId            String
+  buyer              User         @relation("BuyerOrders", fields: [buyerId], references: [id])
+
+  sellerId           String
+  seller             User         @relation("SellerOrders", fields: [sellerId], references: [id])
+
+  status             OrderStatus  @default(PENDING)
+  totalArs           Float
+  marketplaceFeeArs  Float        // Comisión de tcgtX
+  
+  // Snapshot de cotizaciones en el instante de compra
+  exchangeRateUsed   Float        // Ej. 1548.70
+  exchangeRateType   String       // "MEP" o "BLUE"
+
+  // Referencias Mercado Pago
+  mpPreferenceId     String?
+  mpPaymentId        String?      @unique
+  mpStatus           String?
+
+  items              OrderItem[]
+  messages           Message[]
+
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id])
+
+  priceArs    Float
+  quantity    Int
+
+  createdAt   DateTime @default(now())
+}
+
+// ----------------------------------------------------
+// MENSAJERÍA / CHAT ENTRE USUARIOS
+// ----------------------------------------------------
+model Message {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
+
+  receiverId  String
+  receiver    User      @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  orderId     String?
+  order       Order?    @relation(fields: [orderId], references: [id])
+
+  content     String
+  readAt      DateTime?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([senderId, receiverId])
+  @@index([orderId])
+}
