@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Menu,
   X,
+  MessageSquare,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -54,6 +55,13 @@ export function Navbar() {
                 className="text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-sky-400 transition-colors"
               >
                 Mi Colección
+              </Link>
+              <Link
+                href="/messages"
+                className="text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-sky-400 transition-colors flex items-center gap-1.5"
+              >
+                <MessageSquare className="w-4 h-4 text-sky-500" />
+                Mensajes
               </Link>
             </div>
           </div>
@@ -116,6 +124,14 @@ export function Navbar() {
                       <Bookmark className="w-4 h-4 text-sky-500" /> Mi Colección Personal
                     </Link>
 
+                    <Link
+                      href="/messages"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <MessageSquare className="w-4 h-4 text-sky-500" /> Mis Mensajes
+                    </Link>
+
                     <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
 
                     <button
@@ -176,6 +192,13 @@ export function Navbar() {
               className="block text-sm font-medium text-slate-700 dark:text-slate-200 py-1"
             >
               Mi Colección
+            </Link>
+            <Link
+              href="/messages"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-sm font-medium text-slate-700 dark:text-slate-200 py-1"
+            >
+              Mensajes
             </Link>
 
             <div className="border-t border-slate-200 dark:border-slate-800 pt-3">

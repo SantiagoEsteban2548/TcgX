@@ -15,6 +15,7 @@ import {
   Store,
   Tag,
   CheckCircle,
+  MessageSquare,
 } from 'lucide-react';
 
 interface Props {
@@ -313,11 +314,21 @@ export default async function CardDetailPage({ params }: Props) {
                     )}
                   </div>
 
-                  <button
-                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 shrink-0"
-                  >
-                    <ShoppingBag className="w-3.5 h-3.5" /> Comprar
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                      href={`/messages?with=${listing.sellerId}&card=${card.code}`}
+                      className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5"
+                      title="Hacer una pregunta al vendedor"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-sky-500" /> Preguntar
+                    </Link>
+
+                    <button
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" /> Comprar
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
