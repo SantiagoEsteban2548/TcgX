@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -18,7 +18,14 @@ import {
   Package,
   ShoppingBag,
   ExternalLink,
+  Bookmark,
+  Heart,
+  TrendingUp,
+  Trash2,
+  Layers,
 } from 'lucide-react';
+import { CollectionItem } from '@/lib/marketplace';
+import { formatArs, formatUsd } from '@/lib/currency';
 
 export default function ProfilePage() {
   const { user, loading, refreshUser } = useAuth();
@@ -32,8 +39,25 @@ export default function ProfilePage() {
   const [mpLoading, setMpLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  // Collection State
+  const [collection, setCollection] = useState<{
+    items: CollectionItem[];
+    ownedCount: number;
+    wishlistCount: number;
+    totalEstimatedArsMep: number;
+    totalEstimatedArsBlue: number;
+  }>({
+    items: [],
+    ownedCount: 0,
+    wishlistCount: 0,
+    totalEstimatedArsMep: 0,
+    totalEstimatedArsBlue: 0,
+  });
+  const [collectionLoading, setCollectionLoading] = useState(true);
+  const [collectionFilter, setCollectionFilter] = useState<'all' | 'owned' | 'wishlist'>('all');
+
   // Inicializar estado de edición al cargar
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) {
       setName(user.name || '');
       setAlias(user.alias || '');
@@ -41,6 +65,36 @@ export default function ProfilePage() {
       setPhone(user.phone || '');
     }
   }, [user]);
+
+  const fetchCollection = async () => {
+    try {
+      const res = await fetch('/api/user/collection');
+      if (res.ok) {
+        const data = await res.json();
+        setCollection(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCollectionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCollection();
+  }, []);
+
+  const handleRemoveCollectionItem = async (itemId: string) => {
+    if (!confirm('¿Deseás remover esta carta de tu colección?')) return;
+    try {
+      const res = await fetch(`/api/user/collection/${itemId}`, { method: 'DELETE' });
+      if (res.ok) {
+        await fetchCollection();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   if (loading) {
     return (
@@ -137,6 +191,12 @@ export default function ProfilePage() {
     }
   };
 
+  const filteredCollectionItems = collection.items.filter((item) => {
+    if (collectionFilter === 'owned') return !item.isWishlist;
+    if (collectionFilter === 'wishlist') return item.isWishlist;
+    return true;
+  });
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
       {/* Profile Header Card */}
@@ -177,7 +237,7 @@ export default function ProfilePage() {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xl">
-              {user.bio || 'Sin biografía aún. ¡Agregá tus series y cartas favoritas de One Piece!'}
+              {user.bio || 'Sin biografía aún. ¡Agregá tus cartas favoritas de One Piece!'}
             </p>
 
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 pt-2 text-xs text-slate-500 dark:text-slate-400">
@@ -343,13 +403,20 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center pt-1">
+                <Link
+                  href="/sell"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5"
+                >
+                  <Package className="w-3.5 h-3.5" /> Publicar Carta a la Venta
+                </Link>
+
                 <button
                   onClick={handleUnlinkMercadoPago}
                   disabled={mpLoading}
                   className="text-xs text-rose-600 dark:text-rose-400 hover:underline disabled:opacity-50"
                 >
-                  {mpLoading ? 'Desvinculando...' : 'Desvincular cuenta de Mercado Pago'}
+                  {mpLoading ? 'Desvinculando...' : 'Desvincular cuenta'}
                 </button>
               </div>
             </div>
@@ -386,6 +453,156 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Personal Collection Dashboard Section (Decoupled from Listings) */}
+      <section id="collection" className="bg-white dark:bg-[#0F1E36] border border-slate-200 dark:border-[#1B2A4A] rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+              <Bookmark className="w-5 h-5 text-blue-600 dark:text-sky-400" /> Mi Colección Personal & Wishlist
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Registro personal de lo que poseés y tus deseos de compra, valorizado automáticamente según la mediana de TCGplayer.
+            </p>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#0A1128] p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold">
+            <button
+              onClick={() => setCollectionFilter('all')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                collectionFilter === 'all'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Todas ({collection.items.length})
+            </button>
+            <button
+              onClick={() => setCollectionFilter('owned')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                collectionFilter === 'owned'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              En Posesión ({collection.ownedCount})
+            </button>
+            <button
+              onClick={() => setCollectionFilter('wishlist')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                collectionFilter === 'wishlist'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Wishlist ({collection.wishlistCount})
+            </button>
+          </div>
+        </div>
+
+        {/* Portfolio Valuation Header */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#0A1128] border border-slate-200 dark:border-slate-800/80">
+            <span className="text-[10px] text-slate-400 uppercase font-semibold block">
+              Cartas en Posesión
+            </span>
+            <span className="text-xl font-mono font-black text-slate-900 dark:text-white">
+              {collection.ownedCount} unidades
+            </span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#0A1128] border border-slate-200 dark:border-slate-800/80">
+            <span className="text-[10px] text-slate-400 uppercase font-semibold block">
+              Valor Estimado (MEP)
+            </span>
+            <span className="text-xl font-mono font-black text-emerald-600 dark:text-emerald-400">
+              {formatArs(collection.totalEstimatedArsMep)}
+            </span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#0A1128] border border-slate-200 dark:border-slate-800/80">
+            <span className="text-[10px] text-slate-400 uppercase font-semibold block">
+              Valor Estimado (Blue)
+            </span>
+            <span className="text-xl font-mono font-black text-sky-600 dark:text-sky-400">
+              {formatArs(collection.totalEstimatedArsBlue)}
+            </span>
+          </div>
+        </div>
+
+        {/* Collection Items List */}
+        {collectionLoading ? (
+          <div className="py-12 text-center text-xs text-slate-400">Cargando colección...</div>
+        ) : filteredCollectionItems.length === 0 ? (
+          <div className="p-10 text-center space-y-3 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+            <Layers className="w-8 h-8 text-slate-400 mx-auto" />
+            <p className="text-xs text-slate-500">
+              {collectionFilter === 'wishlist'
+                ? 'No tenés cartas en tu lista de deseos.'
+                : 'Todavía no agregaste cartas a tu colección.'}
+            </p>
+            <Link
+              href="/catalog"
+              className="inline-block px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-sm"
+            >
+              Explorar Catálogo y Agregar Cartas
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredCollectionItems.map((item) => (
+              <div
+                key={item.id}
+                className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#0A1128] flex gap-3 items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <img
+                    src={item.cardImageUrl}
+                    alt={item.cardName}
+                    className="w-12 h-16 object-cover rounded-lg bg-slate-200 dark:bg-slate-800 shadow-sm"
+                  />
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono font-bold text-slate-500">
+                        {item.cardCode}
+                      </span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded">
+                        {item.condition}
+                      </span>
+                      {item.isWishlist && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 rounded flex items-center gap-0.5">
+                          <Heart className="w-2.5 h-2.5" /> Deseo
+                        </span>
+                      )}
+                    </div>
+                    <Link
+                      href={`/catalog/${item.cardCode}`}
+                      className="text-xs font-bold text-slate-900 dark:text-white truncate block hover:text-blue-600"
+                    >
+                      {item.cardName}
+                    </Link>
+                    <div className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                      {formatArs(item.estimatedValueArsMep)}{' '}
+                      <span className="text-[10px] text-slate-400 font-sans">
+                        ({item.quantity} {item.quantity === 1 ? 'copia' : 'copias'})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleRemoveCollectionItem(item.id)}
+                  title="Eliminar de colección"
+                  className="p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

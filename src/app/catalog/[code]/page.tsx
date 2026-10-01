@@ -1,19 +1,20 @@
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import {
-  getCardByCode,
-} from '@/lib/catalog';
+import { getCardByCode } from '@/lib/catalog';
+import { getListings } from '@/lib/marketplace';
 import { formatArs, formatUsd } from '@/lib/currency';
+import { CardMarketplaceActions } from '@/components/CardMarketplaceActions';
 import {
   ArrowLeft,
   TrendingUp,
   ShieldCheck,
-  Bookmark,
-  PlusCircle,
   Clock,
   Sparkles,
-  Info,
+  ShoppingBag,
+  Store,
+  Tag,
+  CheckCircle,
 } from 'lucide-react';
 
 interface Props {
@@ -23,12 +24,13 @@ interface Props {
 export default async function CardDetailPage({ params }: Props) {
   const { code } = await params;
 
-  // Enriquecer con valores actuales
   const card = getCardByCode(code);
-
   if (!card) {
     notFound();
   }
+
+  // Obtener publicaciones activas de vendedores en tcgtX para esta carta
+  const listings = getListings({ cardCode: code });
 
   const getRarityBadge = (rarity: string) => {
     const styles: Record<string, string> = {
@@ -50,8 +52,27 @@ export default async function CardDetailPage({ params }: Props) {
     );
   };
 
+  const getConditionBadge = (condition: string) => {
+    const styles: Record<string, string> = {
+      NM: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+      LP: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+      MP: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+      HP: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20',
+      DMG: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+    };
+    return (
+      <span
+        className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${
+          styles[condition] || styles.NM
+        }`}
+      >
+        {condition}
+      </span>
+    );
+  };
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       {/* Back button */}
       <div>
         <Link
@@ -76,7 +97,7 @@ export default async function CardDetailPage({ params }: Props) {
 
           <div className="text-center text-[11px] text-slate-400 flex items-center justify-center gap-1">
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Arte e información oficial de Bandai Namco</span>
+            <span>Arte oficial de Bandai Namco</span>
           </div>
         </div>
 
@@ -97,6 +118,9 @@ export default async function CardDetailPage({ params }: Props) {
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
               {card.name}
             </h1>
+
+            {/* Quick Actions: Add to collection / Wishlist / Sell */}
+            <CardMarketplaceActions cardCode={card.code} />
           </div>
 
           {/* Gameplay Attributes */}
@@ -135,7 +159,7 @@ export default async function CardDetailPage({ params }: Props) {
             </div>
           )}
 
-          {/* TCGplayer Pricing Panel */}
+          {/* TCGplayer Pricing Reference Panel */}
           <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 dark:from-[#0F1E36] dark:to-[#070C1E] border-2 border-blue-500/20 shadow-md space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
@@ -147,7 +171,7 @@ export default async function CardDetailPage({ params }: Props) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Mediana (Obligatoria para lanzamiento) */}
+              {/* Mediana (Obligatoria de lanzamiento) */}
               <div className="p-4 rounded-xl bg-white dark:bg-[#0A1128] border border-slate-200 dark:border-slate-800/80 space-y-1">
                 <span className="text-[10px] font-semibold uppercase text-amber-600 dark:text-amber-400 block">
                   Mediana TCGplayer
@@ -195,43 +219,111 @@ export default async function CardDetailPage({ params }: Props) {
                 </div>
               </div>
             </div>
-
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
-              Los precios de referencia sirven como guía de mercado internacional para compradores y vendedores. Cada vendedor en tcgtX fija su propio precio en Pesos Argentinos (ARS).
-            </p>
-          </div>
-
-          {/* Price History Table */}
-          <div className="p-4 rounded-2xl bg-white dark:bg-[#0F1E36] border border-slate-200 dark:border-slate-800 space-y-3 shadow-sm">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-blue-500" /> Historial de Mediana TCGplayer
-            </h3>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-medium">
-                    <th className="pb-2">Fecha</th>
-                    <th className="pb-2">Mediana (USD)</th>
-                    <th className="pb-2">Mercado (USD)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
-                  {card.priceHistory.map((h, i) => (
-                    <tr key={i} className="text-slate-700 dark:text-slate-300">
-                      <td className="py-2 text-slate-500 font-sans">{h.date}</td>
-                      <td className="py-2 font-bold text-amber-600 dark:text-amber-400">
-                        {formatUsd(h.medianUsd)}
-                      </td>
-                      <td className="py-2 text-slate-500">{formatUsd(h.marketUsd)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Seller Listings Section on tcgtX Marketplace */}
+      <section className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Store className="w-5 h-5 text-blue-600 dark:text-sky-400" />
+            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+              Publicaciones en venta ({listings.length})
+            </h2>
+          </div>
+
+          <Link
+            href={`/sell?card=${card.code}`}
+            className="text-xs font-bold text-blue-600 dark:text-sky-400 hover:underline flex items-center gap-1"
+          >
+            <Tag className="w-3.5 h-3.5" /> Publicar en este listado
+          </Link>
+        </div>
+
+        {listings.length === 0 ? (
+          <div className="p-8 rounded-2xl bg-white dark:bg-[#0F1E36] border border-slate-200 dark:border-slate-800 text-center space-y-3">
+            <ShoppingBag className="w-8 h-8 text-slate-400 mx-auto" />
+            <p className="text-xs text-slate-500">
+              Actualmente no hay publicaciones activas para esta carta en tcgtX.
+            </p>
+            <Link
+              href={`/sell?card=${card.code}`}
+              className="inline-block px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-md"
+            >
+              ¡Sé el primer vendedor en publicarla!
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {listings.map((listing) => (
+              <div
+                key={listing.id}
+                className="bg-white dark:bg-[#0F1E36] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:border-blue-400 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              >
+                {/* Seller & Condition */}
+                <div className="flex items-center gap-3">
+                  <img
+                    src={listing.seller.avatarUrl || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${listing.seller.alias}`}
+                    alt={listing.seller.alias}
+                    className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 object-cover"
+                  />
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        @{listing.seller.alias}
+                      </span>
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                        <ShieldCheck className="w-3 h-3" /> {listing.seller.reputationScore.toFixed(1)}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        ({listing.seller.totalSalesCount} ventas)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs">
+                      {getConditionBadge(listing.condition)}
+                      <span className="text-slate-400 text-[11px]">
+                        Disponibles: <strong className="text-slate-700 dark:text-slate-300">{listing.quantity}</strong>
+                      </span>
+                    </div>
+
+                    {listing.description && (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-md pt-0.5">
+                        "{listing.description}"
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Price & Checkout Action */}
+                <div className="flex items-center justify-between sm:justify-end gap-5 border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100 dark:border-slate-800">
+                  <div className="text-right">
+                    <div className="text-xl font-mono font-black text-slate-900 dark:text-white">
+                      {formatArs(listing.priceArs)}
+                    </div>
+                    {listing.isBelowMedian ? (
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 justify-end">
+                        🔥 {Math.abs(listing.medianDiffPercentage)}% bajo mediana
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400">
+                        Precio vendedor en ARS
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 shrink-0"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5" /> Comprar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
