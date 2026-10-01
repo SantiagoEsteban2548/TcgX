@@ -32,6 +32,11 @@ export interface CardFilters {
   rarity?: string;
   color?: string;
   type?: string;
+  minCost?: number;
+  maxCost?: number;
+  minPower?: number;
+  maxPower?: number;
+  counter?: number;
   sortBy?: 'price-asc' | 'price-desc' | 'name-asc' | 'code-asc';
   limit?: number;
   offset?: number;
@@ -110,6 +115,26 @@ export function getCards(filters: CardFilters = {}, mepRate = 1548.7, blueRate =
 
   if (filters.type) {
     result = result.filter((c) => c.type?.toLowerCase() === filters.type!.toLowerCase());
+  }
+
+  if (filters.minCost !== undefined) {
+    result = result.filter((c) => c.cost !== undefined && c.cost !== null && c.cost >= filters.minCost!);
+  }
+
+  if (filters.maxCost !== undefined) {
+    result = result.filter((c) => c.cost !== undefined && c.cost !== null && c.cost <= filters.maxCost!);
+  }
+
+  if (filters.minPower !== undefined) {
+    result = result.filter((c) => c.power !== undefined && c.power !== null && c.power >= filters.minPower!);
+  }
+
+  if (filters.maxPower !== undefined) {
+    result = result.filter((c) => c.power !== undefined && c.power !== null && c.power <= filters.maxPower!);
+  }
+
+  if (filters.counter !== undefined) {
+    result = result.filter((c) => c.counter !== undefined && c.counter !== null && c.counter === filters.counter!);
   }
 
   // Ordenamiento

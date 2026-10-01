@@ -63,6 +63,52 @@ describe('Catalog & TCGplayer Pricing Service', () => {
         expect(desc[i].currentMedianUsd).toBeGreaterThanOrEqual(desc[i + 1].currentMedianUsd);
       }
     });
+
+    it('debe filtrar por coste numérico mínimo y máximo', () => {
+      const cheapCards = getCards({ maxCost: 3 }, mepRate, blueRate);
+      expect(cheapCards.length).toBeGreaterThan(0);
+      cheapCards.forEach((c) => expect(c.cost).toBeLessThanOrEqual(3));
+
+      const expensiveCards = getCards({ minCost: 7 }, mepRate, blueRate);
+      expect(expensiveCards.length).toBeGreaterThan(0);
+      expensiveCards.forEach((c) => expect(c.cost).toBeGreaterThanOrEqual(7));
+
+      const midCostCards = getCards({ minCost: 4, maxCost: 6 }, mepRate, blueRate);
+      expect(midCostCards.length).toBeGreaterThan(0);
+      midCostCards.forEach((c) => {
+        expect(c.cost).toBeGreaterThanOrEqual(4);
+        expect(c.cost).toBeLessThanOrEqual(6);
+      });
+    });
+
+    it('debe filtrar por poder numérico mínimo y máximo', () => {
+      const weakCards = getCards({ maxPower: 4000 }, mepRate, blueRate);
+      expect(weakCards.length).toBeGreaterThan(0);
+      weakCards.forEach((c) => expect(c.power).toBeLessThanOrEqual(4000));
+
+      const strongCards = getCards({ minPower: 8000 }, mepRate, blueRate);
+      expect(strongCards.length).toBeGreaterThan(0);
+      strongCards.forEach((c) => expect(c.power).toBeGreaterThanOrEqual(8000));
+    });
+
+    it('debe filtrar por valor de counter', () => {
+      const counter1000 = getCards({ counter: 1000 }, mepRate, blueRate);
+      expect(counter1000.length).toBeGreaterThan(0);
+      counter1000.forEach((c) => expect(c.counter).toBe(1000));
+    });
+
+    it('debe combinar filtros avanzados (ej. rojas con costo <= 3 y power >= 5000)', () => {
+      const combo = getCards({ color: 'Red', maxCost: 3, minPower: 5000 }, mepRate, blueRate);
+      // Validamos que todos los resultados cumplan la condición.
+      // Dependiendo del catálogo, podría estar vacío, pero asumiremos que existe Zoro u otra carta.
+      if (combo.length > 0) {
+        combo.forEach((c) => {
+          expect(c.color?.toLowerCase()).toContain('red');
+          expect(c.cost).toBeLessThanOrEqual(3);
+          expect(c.power).toBeGreaterThanOrEqual(5000);
+        });
+      }
+    });
   });
 
   describe('getCardByCode', () => {
