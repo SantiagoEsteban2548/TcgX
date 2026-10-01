@@ -44,7 +44,7 @@ export function Navbar() {
             {/* Desktop Navigation Links */}
             <div className="hidden md:flex items-center gap-6">
               <Link
-                href="/"
+                href="/catalog"
                 className="text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-sky-400 transition-colors"
               >
                 Catálogo de Cartas
@@ -164,7 +164,7 @@ export function Navbar() {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
             <Link
-              href="/"
+              href="/catalog"
               onClick={() => setMobileMenuOpen(false)}
               className="block text-sm font-medium text-slate-700 dark:text-slate-200 py-1"
             >
