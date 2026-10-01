@@ -177,7 +177,7 @@ let listingsStore: MarketplaceListing[] = [
   },
 ];
 
-let collectionsStore: CollectionItem[] = [
+const collectionsStore: CollectionItem[] = [
   {
     id: 'col-1',
     userId: 'user-default-collection',

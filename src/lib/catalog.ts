@@ -49,8 +49,8 @@ export interface SealedFilters {
 }
 
 // In-memory mutable copy for live sync during app runtime
-let cardsStore: CanonicalCard[] = JSON.parse(JSON.stringify(CANONICAL_CARDS));
-let sealedStore: CanonicalSealedProduct[] = JSON.parse(JSON.stringify(CANONICAL_SEALED));
+const cardsStore: CanonicalCard[] = JSON.parse(JSON.stringify(CANONICAL_CARDS));
+const sealedStore: CanonicalSealedProduct[] = JSON.parse(JSON.stringify(CANONICAL_SEALED));
 
 /**
  * Enriquece un producto o carta con los valores convertidos a ARS en MEP y Blue.
