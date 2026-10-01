@@ -23,6 +23,8 @@ import {
   TrendingUp,
   Trash2,
   Layers,
+  Receipt,
+  MessageSquare,
 } from 'lucide-react';
 import { CollectionItem } from '@/lib/marketplace';
 import { formatArs, formatUsd } from '@/lib/currency';
@@ -80,8 +82,33 @@ export default function ProfilePage() {
     }
   };
 
+  const [orders, setOrders] = useState<{ purchases: any[]; sales: any[] }>({
+    purchases: [],
+    sales: [],
+  });
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersTab, setOrdersTab] = useState<'purchases' | 'sales'>('purchases');
+
+  const fetchOrders = async () => {
+    try {
+      const res = await fetch('/api/orders');
+      if (res.ok) {
+        const data = await res.json();
+        setOrders({
+          purchases: data.purchases || [],
+          sales: data.sales || [],
+        });
+      }
+    } catch (err) {
+      console.error('Error al cargar órdenes:', err);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchCollection();
+    fetchOrders();
   }, []);
 
   const handleRemoveCollectionItem = async (itemId: string) => {
@@ -600,6 +627,139 @@ export default function ProfilePage() {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      {/* Mis Operaciones (Mercado Pago Split) */}
+      <section className="bg-white dark:bg-[#0F1E36] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-sky-400">
+              <Receipt className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                Mis Transacciones
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Historial de compras y ventas procesadas mediante Mercado Pago Split.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex p-1 bg-slate-100 dark:bg-slate-900 rounded-xl text-xs font-semibold">
+            <button
+              onClick={() => setOrdersTab('purchases')}
+              className={`px-4 py-1.5 rounded-lg transition ${
+                ordersTab === 'purchases'
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-sky-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              Compras ({orders.purchases.length})
+            </button>
+            <button
+              onClick={() => setOrdersTab('sales')}
+              className={`px-4 py-1.5 rounded-lg transition ${
+                ordersTab === 'sales'
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-sky-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              Ventas ({orders.sales.length})
+            </button>
+          </div>
+        </div>
+
+        {ordersLoading ? (
+          <div className="py-8 text-center text-xs text-slate-400">
+            Cargando historial de operaciones...
+          </div>
+        ) : (ordersTab === 'purchases' ? orders.purchases : orders.sales).length === 0 ? (
+          <div className="p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+            <Receipt className="w-8 h-8 text-slate-400 mx-auto mb-2 opacity-50" />
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              No tenés {ordersTab === 'purchases' ? 'compras' : 'ventas'} registradas todavía.
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              {ordersTab === 'purchases'
+                ? 'Explorá el catálogo para encontrar cartas al mejor precio del mercado.'
+                : 'Publicá tus cartas para comenzar a vender en tcgtX.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {(ordersTab === 'purchases' ? orders.purchases : orders.sales).map((order) => {
+              const otherPartyId = ordersTab === 'purchases' ? order.sellerId : order.buyerId;
+              const isPaid = order.status === 'PAID';
+
+              return (
+                <div
+                  key={order.id}
+                  className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <img
+                      src={order.item.cardImageUrl}
+                      alt={order.item.cardName}
+                      className="w-12 h-16 object-cover rounded-lg bg-slate-200 dark:bg-slate-800 shrink-0 shadow-xs"
+                    />
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-bold text-blue-600 dark:text-sky-400">
+                          {order.item.cardCode}
+                        </span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                          {order.item.condition}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isPaid
+                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+                          }`}
+                        >
+                          {isPaid ? 'PAGADO' : 'PENDIENTE'}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                        {order.item.cardName}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {order.item.quantity}x a {formatArs(order.item.priceArs)} (Dólar {order.exchangeRateType} ${order.exchangeRateUsed.toFixed(1)})
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-200 dark:border-slate-800">
+                    <div className="text-right">
+                      <span className="text-xs text-slate-400 block">Total Transacción</span>
+                      <span className="text-base font-mono font-black text-slate-900 dark:text-white">
+                        {formatArs(order.totalArs)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/messages?with=${otherPartyId}&card=${order.item.cardCode}`}
+                        className="p-2.5 bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition"
+                        title="Abrir chat de la orden"
+                      >
+                        <MessageSquare className="w-4 h-4 text-sky-500" />
+                      </Link>
+
+                      <Link
+                        href={`/checkout/feedback?order_id=${order.id}&status=${isPaid ? 'approved' : 'pending'}`}
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition shadow-xs flex items-center gap-1"
+                      >
+                        Comprobante ↗
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>

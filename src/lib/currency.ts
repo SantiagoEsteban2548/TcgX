@@ -54,3 +54,47 @@ export function formatUsd(amount: number): string {
     maximumFractionDigits: 2,
   }).format(amount);
 }
+
+/**
+ * Obtiene las cotizaciones oficiales de MEP y Blue con fallback seguro
+ */
+export async function getExchangeRates(): Promise<{
+  mep: { compra: number; venta: number };
+  blue: { compra: number; venta: number };
+  updatedAt: string;
+}> {
+  try {
+    const res = await fetch('https://dolarapi.com/v1/dolares', {
+      headers: { 'User-Agent': 'tcgtX/1.0' },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const bolsa = data.find((d: any) => d.casa === 'bolsa');
+      const blue = data.find((d: any) => d.casa === 'blue');
+
+      if (bolsa || blue) {
+        return {
+          mep: {
+            compra: bolsa?.compra || 1537.2,
+            venta: bolsa?.venta || 1548.7,
+          },
+          blue: {
+            compra: blue?.compra || 1540.0,
+            venta: blue?.venta || 1560.0,
+          },
+          updatedAt: bolsa?.fechaActualizacion || new Date().toISOString(),
+        };
+      }
+    }
+  } catch {
+    // Modo offline o fallback
+  }
+
+  return {
+    mep: { compra: 1537.2, venta: 1548.7 },
+    blue: { compra: 1540.0, venta: 1560.0 },
+    updatedAt: new Date().toISOString(),
+  };
+}
+

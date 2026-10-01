@@ -5,6 +5,7 @@ import { getCardByCode } from '@/lib/catalog';
 import { getListings } from '@/lib/marketplace';
 import { formatArs, formatUsd } from '@/lib/currency';
 import { CardMarketplaceActions } from '@/components/CardMarketplaceActions';
+import { ListingBuyButton } from '@/components/ListingBuyButton';
 import {
   ArrowLeft,
   TrendingUp,
@@ -323,11 +324,7 @@ export default async function CardDetailPage({ params }: Props) {
                       <MessageSquare className="w-3.5 h-3.5 text-sky-500" /> Preguntar
                     </Link>
 
-                    <button
-                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5"
-                    >
-                      <ShoppingBag className="w-3.5 h-3.5" /> Comprar
-                    </button>
+                    <ListingBuyButton listing={listing} />
                   </div>
                 </div>
               </div>

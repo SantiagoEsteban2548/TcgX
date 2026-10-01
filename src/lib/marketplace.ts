@@ -433,3 +433,76 @@ export function removeFromCollection(userId: string, itemId: string): boolean {
   collectionsStore.splice(index, 1);
   return true;
 }
+
+export function updateListingStock(id: string, quantitySold: number): MarketplaceListing | null {
+  const listing = listingsStore.find((l) => l.id === id);
+  if (!listing) return null;
+
+  listing.quantity = Math.max(0, listing.quantity - quantitySold);
+  if (listing.quantity === 0) {
+    listing.status = 'SOLD';
+  }
+  listing.updatedAt = new Date().toISOString();
+  return listing;
+}
+
+export function _resetMarketplaceStore() {
+  // Restablece listings de prueba
+  listingsStore = [
+    {
+      id: 'listing-1',
+      sellerId: 'seller-demo-1',
+      seller: {
+        id: 'seller-demo-1',
+        alias: 'pirate_king_cards',
+        name: 'Juan Pirata (Vendedor OP)',
+        avatarUrl: 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=pirate_king',
+        reputationScore: 4.9,
+        totalSalesCount: 156,
+        mpConnected: true,
+      },
+      cardCode: 'OP01-120',
+      cardName: 'Shanks (Manga Alt-Art)',
+      cardImageUrl: 'https://images.ygoprodeck.com/images/cards_optcg/OP01-120_p1.jpg',
+      condition: 'NM',
+      priceArs: 1150000,
+      quantity: 1,
+      description: 'Guardada en perfecto estado desde que salió del sobre. Sleeve Dragon Shield + toploader ultra pro.',
+      photos: ['https://images.ygoprodeck.com/images/cards_optcg/OP01-120_p1.jpg'],
+      status: 'ACTIVE',
+      medianPriceUsd: 840.0,
+      medianDiffPercentage: -11.6,
+      isBelowMedian: true,
+      createdAt: new Date(Date.now() - 86400000).toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'listing-2',
+      sellerId: 'user-demo-2',
+      seller: {
+        id: 'user-demo-2',
+        alias: 'strawhat_shop',
+        name: 'Luffy Collectibles',
+        avatarUrl: 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=strawhat_shop',
+        reputationScore: 5.0,
+        totalSalesCount: 42,
+        mpConnected: true,
+      },
+      cardCode: 'OP01-025',
+      cardName: 'Roronoa Zoro (Rush)',
+      cardImageUrl: 'https://images.ygoprodeck.com/images/cards_optcg/OP01-025.jpg',
+      condition: 'LP',
+      priceArs: 29500,
+      quantity: 1,
+      description: 'Lightly played, leve desgaste en borde superior posterior. Frente 100% impecable.',
+      photos: ['https://images.ygoprodeck.com/images/cards_optcg/OP01-025.jpg'],
+      status: 'ACTIVE',
+      medianPriceUsd: 24.0,
+      medianDiffPercentage: -20.6,
+      isBelowMedian: true,
+      createdAt: new Date(Date.now() - 172800000).toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ];
+}
+
