@@ -6,6 +6,7 @@ import { getListings } from '@/lib/marketplace';
 import { formatArs, formatUsd } from '@/lib/currency';
 import { CardMarketplaceActions } from '@/components/CardMarketplaceActions';
 import { ListingBuyButton } from '@/components/ListingBuyButton';
+import { CardImage } from '@/components/CardImage';
 import {
   ArrowLeft,
   TrendingUp,
@@ -90,9 +91,10 @@ export default async function CardDetailPage({ params }: Props) {
         {/* Card Artwork Preview (5 cols) */}
         <div className="md:col-span-5 space-y-4">
           <div className="relative aspect-[1/1.4] w-full max-w-sm mx-auto rounded-3xl overflow-hidden bg-slate-100 dark:bg-[#0A1128] border-2 border-slate-200 dark:border-[#1B2A4A] shadow-2xl shadow-blue-500/10">
-            <img
+            <CardImage
               src={card.imageUrl}
               alt={card.name}
+              code={card.code}
               className="w-full h-full object-cover"
             />
           </div>

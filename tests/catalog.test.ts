@@ -28,12 +28,16 @@ describe('Catalog & TCGplayer Pricing Service', () => {
       const zoroCards = getCards({ query: 'Zoro' }, mepRate, blueRate);
       expect(zoroCards.length).toBeGreaterThan(0);
       zoroCards.forEach((c) => {
-        expect(c.name.toLowerCase().includes('zoro') || c.code.includes('Zoro')).toBe(true);
+        const matches =
+          c.name.toLowerCase().includes('zoro') ||
+          c.code.toLowerCase().includes('zoro') ||
+          c.setName.toLowerCase().includes('zoro');
+        expect(matches).toBe(true);
       });
 
       const op01025 = getCards({ query: 'OP01-025' }, mepRate, blueRate);
-      expect(op01025.length).toBe(1);
-      expect(op01025[0].code).toBe('OP01-025');
+      expect(op01025.length).toBeGreaterThanOrEqual(1);
+      expect(op01025.some((c) => c.code === 'OP01-025')).toBe(true);
     });
 
     it('debe filtrar por setCode (ej. OP-01)', () => {

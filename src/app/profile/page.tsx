@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { CollectionItem } from '@/lib/marketplace';
 import { formatArs, formatUsd } from '@/lib/currency';
+import { CardImage } from '@/components/CardImage';
 
 export default function ProfilePage() {
   const { user, loading, refreshUser } = useAuth();
@@ -584,11 +585,14 @@ export default function ProfilePage() {
                 className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#0A1128] flex gap-3 items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <img
-                    src={item.cardImageUrl}
-                    alt={item.cardName}
-                    className="w-12 h-16 object-cover rounded-lg bg-slate-200 dark:bg-slate-800 shadow-sm"
-                  />
+                  <div className="w-12 h-16 rounded-lg overflow-hidden shrink-0 shadow-sm">
+                    <CardImage
+                      src={item.cardImageUrl}
+                      alt={item.cardName}
+                      code={item.cardCode}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-mono font-bold text-slate-500">
@@ -700,11 +704,14 @@ export default function ProfilePage() {
                   className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
                   <div className="flex items-center gap-3.5">
-                    <img
-                      src={order.item.cardImageUrl}
-                      alt={order.item.cardName}
-                      className="w-12 h-16 object-cover rounded-lg bg-slate-200 dark:bg-slate-800 shrink-0 shadow-xs"
-                    />
+                    <div className="w-12 h-16 rounded-lg overflow-hidden shrink-0 shadow-xs">
+                      <CardImage
+                        src={order.item.cardImageUrl}
+                        alt={order.item.cardName}
+                        code={order.item.cardCode}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-mono font-bold text-blue-600 dark:text-sky-400">

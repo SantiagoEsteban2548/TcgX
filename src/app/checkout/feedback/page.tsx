@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { formatArs } from '@/lib/currency';
+import { CardImage } from '@/components/CardImage';
 import {
   CheckCircle,
   Clock,
@@ -176,11 +177,14 @@ function FeedbackContent() {
 
             {/* Item Card Detail */}
             <div className="flex gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60">
-              <img
-                src={order.item.cardImageUrl}
-                alt={order.item.cardName}
-                className="w-16 h-22 object-cover rounded-lg shadow-xs shrink-0"
-              />
+              <div className="w-16 h-22 shrink-0 rounded-lg overflow-hidden shadow-xs">
+                <CardImage
+                  src={order.item.cardImageUrl}
+                  alt={order.item.cardName}
+                  code={order.item.cardCode}
+                  className="w-full h-full object-cover"
+                />
+              </div>
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs font-bold text-blue-600 dark:text-sky-400">

@@ -33,6 +33,8 @@ export interface CardFilters {
   color?: string;
   type?: string;
   sortBy?: 'price-asc' | 'price-desc' | 'name-asc' | 'code-asc';
+  limit?: number;
+  offset?: number;
 }
 
 export interface SealedFilters {
@@ -89,7 +91,13 @@ export function getCards(filters: CardFilters = {}, mepRate = 1548.7, blueRate =
   }
 
   if (filters.setCode) {
-    result = result.filter((c) => c.setCode === filters.setCode);
+    const targetSet = filters.setCode.toUpperCase().replace(/-/g, '');
+    result = result.filter(
+      (c) =>
+        c.setCode.toUpperCase() === filters.setCode?.toUpperCase() ||
+        c.setCode.toUpperCase().replace(/-/g, '') === targetSet ||
+        c.code.toUpperCase().startsWith(targetSet)
+    );
   }
 
   if (filters.rarity) {
@@ -97,11 +105,11 @@ export function getCards(filters: CardFilters = {}, mepRate = 1548.7, blueRate =
   }
 
   if (filters.color) {
-    result = result.filter((c) => c.color === filters.color);
+    result = result.filter((c) => c.color?.toLowerCase().includes(filters.color!.toLowerCase()));
   }
 
   if (filters.type) {
-    result = result.filter((c) => c.type === filters.type);
+    result = result.filter((c) => c.type?.toLowerCase() === filters.type!.toLowerCase());
   }
 
   // Ordenamiento
@@ -116,14 +124,36 @@ export function getCards(filters: CardFilters = {}, mepRate = 1548.7, blueRate =
     result.sort((a, b) => a.code.localeCompare(b.code));
   }
 
+  // Paginación si se especifica
+  if (filters.offset || filters.limit) {
+    const start = filters.offset || 0;
+    const end = filters.limit ? start + filters.limit : undefined;
+    result = result.slice(start, end);
+  }
+
   return result.map((c) => enrichCard(c, mepRate, blueRate));
 }
 
 /**
- * Obtiene el detalle de una carta específica por su código oficial (e.g. "OP01-025")
+ * Obtiene el total de cartas que coinciden con los filtros (para paginación)
+ */
+export function getCardsCount(filters: CardFilters = {}): number {
+  return getCards({ ...filters, limit: undefined, offset: undefined }).length;
+}
+
+/**
+ * Obtiene el detalle de una carta específica por su código oficial (e.g. "OP01-025" o "OP01025")
  */
 export function getCardByCode(code: string, mepRate = 1548.7, blueRate = 1560.0): EnrichedCard | null {
-  const card = cardsStore.find((c) => c.code.toUpperCase() === code.toUpperCase());
+  const clean = code.toUpperCase().trim();
+  const normalized = clean.replace(/[^A-Z0-9]/g, '');
+
+  const card = cardsStore.find(
+    (c) =>
+      c.code.toUpperCase() === clean ||
+      c.code.toUpperCase().replace(/[^A-Z0-9]/g, '') === normalized
+  );
+
   if (!card) return null;
   return enrichCard(card, mepRate, blueRate);
 }

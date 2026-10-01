@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { CANONICAL_CARDS, CanonicalCard } from '@/data/canonicalCatalog';
 import { formatArs, formatUsd, calculateMedianDiffPercentage } from '@/lib/currency';
+import { CardImage } from '@/components/CardImage';
 
 export default function SellPage() {
   const router = useRouter();
@@ -281,12 +282,15 @@ export default function SellPage() {
 
             {/* Selected Card Mini Preview */}
             <div className="flex gap-3 items-center p-3 rounded-xl bg-slate-50 dark:bg-[#0A1128]">
-              <img
-                src={selectedCard.imageUrl}
-                alt={selectedCard.name}
-                className="w-12 h-16 object-cover rounded-lg shadow-sm"
-              />
-              <div className="space-y-0.5">
+              <div className="w-12 h-16 shrink-0 rounded-lg overflow-hidden">
+                <CardImage
+                  src={selectedCard.imageUrl}
+                  alt={selectedCard.name}
+                  code={selectedCard.code}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="space-y-0.5 min-w-0">
                 <span className="text-[10px] font-mono text-slate-400">{selectedCard.code}</span>
                 <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
                   {selectedCard.name}

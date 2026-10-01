@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { EnrichedCard, EnrichedSealedProduct } from '@/lib/catalog';
 import { formatArs, formatUsd } from '@/lib/currency';
+import { CardImage } from '@/components/CardImage';
 
 export default function CatalogPage() {
   const [activeTab, setActiveTab] = useState<'singles' | 'sealed'>('singles');
@@ -281,16 +282,11 @@ export default function CatalogPage() {
 
                     {/* Card Image */}
                     <div className="relative aspect-[1/1.4] w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-[#0A1128]">
-                      <img
+                      <CardImage
                         src={card.imageUrl}
                         alt={card.name}
+                        code={card.code}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                        onError={(e) => {
-                          // Fallback placeholder si la imagen externa falla
-                          (e.target as HTMLImageElement).src =
-                            'https://images.ygoprodeck.com/images/cards_optcg/back.jpg';
-                        }}
                       />
                     </div>
 
