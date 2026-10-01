@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { NotificationBell } from '@/components/NotificationBell';
 import {
   Compass,
   User as UserIcon,
@@ -68,6 +69,7 @@ export function Navbar() {
 
           {/* Right Action Area */}
           <div className="hidden md:flex items-center gap-3">
+            <NotificationBell />
             <ThemeToggle />
 
             {loading ? (

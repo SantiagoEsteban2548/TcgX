@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { Zap, Tag, Check, X, Sparkles, DollarSign, Handshake } from 'lucide-react';
+import { formatArs } from '@/lib/currency';
 
 interface InternalMessage {
   id: string;
@@ -39,6 +41,9 @@ function MessagesContent() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [authError, setAuthError] = useState(false);
+  const [offerModalOpen, setOfferModalOpen] = useState(false);
+  const [offerAmount, setOfferAmount] = useState<number>(25000);
+  const [offerNotes, setOfferNotes] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Cargar usuario y conversaciones
@@ -162,6 +167,44 @@ function MessagesContent() {
       }
     } catch (err) {
       alert('Error de conexión al enviar mensaje');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleSendOffer = async () => {
+    if (!offerAmount || offerAmount <= 0 || !activeUserId || sending) return;
+    setSending(true);
+    try {
+      const offerPayload = {
+        amountArs: offerAmount,
+        cardCode: initialCardCode || 'General',
+        notes: offerNotes.trim() || undefined,
+      };
+
+      const offerMessage = `⚡ [OFERTA_FORMAL:${JSON.stringify(offerPayload)}] Te propongo una oferta formal de compra por ${formatArs(offerAmount)} ARS. ${offerNotes ? `"${offerNotes}"` : '¿Te sirve cerrar en este valor?'}`;
+
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receiverId: activeUserId,
+          content: offerMessage,
+          cardCode: initialCardCode || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setActiveMessages((prev) => [...prev, data.message]);
+        setOfferModalOpen(false);
+        setOfferNotes('');
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'Error al enviar oferta');
+      }
+    } catch (err) {
+      console.error('Error enviando contraoferta:', err);
     } finally {
       setSending(false);
     }
