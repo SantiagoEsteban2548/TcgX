@@ -84,11 +84,11 @@ Cuando se asigne una tarea a Jules, el ticket debe redactarse con esta estructur
   - No tocar la lógica de cotizaciones de divisas.
 
 ### TICKET JULES #2: Filtro de Búsqueda Avanzada por Atributos de Juego (Power, Cost, Counter)
-- **Estado**: `[PENDIENTE]`
+- **Estado**: `[COMPLETADO]`
 - **Objetivo**: Extender `CardFilters` en `src/lib/catalog.ts` para permitir rangos numéricos de filtro: costo mínimo/máximo, poder mínimo/máximo y valor de contraataque (Counter 1000/2000).
 - **Criterios de Aceptación**:
-  - [ ] Soporte para `minCost`, `maxCost`, `minPower`, `maxPower`, `counter` en `CardFilters` y `getCards()`.
-  - [ ] Tests unitarios en `tests/catalog.test.ts` verificando filtros combinados (ej: cartas rojas con costo <= 3 y power >= 5000).
+  - [x] Soporte para `minCost`, `maxCost`, `minPower`, `maxPower`, `counter` en `CardFilters` y `getCards()`.
+  - [x] Tests unitarios en `tests/catalog.test.ts` verificando filtros combinados (ej: cartas rojas con costo <= 3 y power >= 5000).
 - **Contexto del Repo**:
   - Archivos a modificar: `src/lib/catalog.ts`, `tests/catalog.test.ts`.
 - **Qué NO hacer**:

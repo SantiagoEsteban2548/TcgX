@@ -63,6 +63,64 @@ describe('Catalog & TCGplayer Pricing Service', () => {
         expect(desc[i].currentMedianUsd).toBeGreaterThanOrEqual(desc[i + 1].currentMedianUsd);
       }
     });
+
+    it('debe filtrar por costo (minCost / maxCost)', () => {
+      const cardsCostMax3 = getCards({ maxCost: 3 }, mepRate, blueRate);
+      expect(cardsCostMax3.length).toBeGreaterThan(0);
+      cardsCostMax3.forEach((c) => {
+        expect(c.cost).not.toBeNull();
+        expect(c.cost).toBeLessThanOrEqual(3);
+      });
+
+      const cardsCostMin5 = getCards({ minCost: 5 }, mepRate, blueRate);
+      expect(cardsCostMin5.length).toBeGreaterThan(0);
+      cardsCostMin5.forEach((c) => {
+        expect(c.cost).not.toBeNull();
+        expect(c.cost).toBeGreaterThanOrEqual(5);
+      });
+
+      const cardsCostBetween = getCards({ minCost: 2, maxCost: 4 }, mepRate, blueRate);
+      expect(cardsCostBetween.length).toBeGreaterThan(0);
+      cardsCostBetween.forEach((c) => {
+        expect(c.cost).not.toBeNull();
+        expect(c.cost).toBeGreaterThanOrEqual(2);
+        expect(c.cost).toBeLessThanOrEqual(4);
+      });
+    });
+
+    it('debe filtrar por poder (minPower / maxPower)', () => {
+      const cardsPowerMin5000 = getCards({ minPower: 5000 }, mepRate, blueRate);
+      expect(cardsPowerMin5000.length).toBeGreaterThan(0);
+      cardsPowerMin5000.forEach((c) => {
+        expect(c.power).not.toBeNull();
+        expect(c.power).toBeGreaterThanOrEqual(5000);
+      });
+
+      const cardsPowerMax4000 = getCards({ maxPower: 4000 }, mepRate, blueRate);
+      expect(cardsPowerMax4000.length).toBeGreaterThan(0);
+      cardsPowerMax4000.forEach((c) => {
+        expect(c.power).not.toBeNull();
+        expect(c.power).toBeLessThanOrEqual(4000);
+      });
+    });
+
+    it('debe filtrar por counter exacto', () => {
+      const cardsWithCounter1000 = getCards({ counter: 1000 }, mepRate, blueRate);
+      expect(cardsWithCounter1000.length).toBeGreaterThan(0);
+      cardsWithCounter1000.forEach((c) => {
+        expect(c.counter).toBe(1000);
+      });
+    });
+
+    it('debe combinar filtros múltiples: rojas, costo <= 3, poder >= 5000', () => {
+      const combined = getCards({ color: 'Red', maxCost: 3, minPower: 5000 }, mepRate, blueRate);
+      expect(combined.length).toBeGreaterThan(0);
+      combined.forEach((c) => {
+        expect(c.color).toContain('Red');
+        expect(c.cost).toBeLessThanOrEqual(3);
+        expect(c.power).toBeGreaterThanOrEqual(5000);
+      });
+    });
   });
 
   describe('getCardByCode', () => {
